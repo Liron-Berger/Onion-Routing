@@ -7,8 +7,6 @@ POLL_TIMEOUT = 10000
 
 
 
-
-
 VERSION = 0x05
 RESERVED = 0x00
 
@@ -59,12 +57,29 @@ SUPPORTED_ADDRESS_TYPE = (
 
 
 """ HTTP CONSTANTS """
+(
+    RECV_STATUS,
+    RECV_HEADERS,
+    RECV_CONTENT,
+    SEND_STATUS,
+    SEND_HEADERS,
+    SEND_CONTENT,
+) = range(6)
 
+HTTP_SIGNATURE = "HTTP/1.1"
+CRLF = "\r\n"
+CRLF_BIN = CRLF.encode("utf-8")
+MAX_NUMBER_OF_HEADERS = 100
+Cookie = "Cookie"
+BASE = "./files"
+INTERNAL_ERROR = "Internal Error"
 BLOCK_SIZE = 1024
-CRLF = '\r\n'
-CRLF_BIN = CRLF.encode('utf-8')
-DEFAULT_HTTP_PORT = 80
-HTTP_SIGNATURE = 'HTTP/1.1'
+CONTENT_TYPE = "Content-Type"
+CONTENT_LENGTH = "Content-Length"
+AUTHORIZATION = "Authorization"
+UNATHORIZED = "Unathorized"
+
+
 MAX_HEADER_LENGTH = 4096
 MAX_NUMBER_OF_HEADERS = 100
 
@@ -76,6 +91,12 @@ HEADERS =   {   'Cache-Control': 'Cache-Control: no-cache, no-store, must-revali
                 'Expires': 'Expires: 0', 
                 'WWW-Authenticate':'WWW-Authenticate: Basic realm=\"myRealm\"' 
             }
+
+MIME_MAPPING = {
+    'html': 'text/html',
+    'png': 'image/png',
+    'txt': 'text/plain',
+}
                                 
 # vim: expandtab tabstop=4 shiftwidth=4
 

@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import constants
 import errno
 import os
 import signal
@@ -51,3 +52,24 @@ def validate_ip(ip):
         if i < 0 or i > 255:
             return False
     return True
+
+
+def recv_line(
+    buf,
+    max_length=constants.MAX_HEADER_LENGTH,
+    block_size=constants.BLOCK_SIZE,
+):
+    while True:
+        if len(buf) > max_length:
+            raise RuntimeError('Exceeded maximum line length %s' % max_length)
+
+        n = buf.find(constants.CRLF_BIN)
+        if n != -1:
+            break
+
+    return buf[:n].decode('utf-8'), buf[n + len(constants.CRLF_BIN):]
+
+def text_to_html(
+    text,
+):
+    return ("<HTML>\r\n<BODY>\r\n%s\r\n</BODY>\r\n</HTML>" % text).decode('utf-8')

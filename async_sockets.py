@@ -14,6 +14,11 @@ from errors import (
     NotEnoughArguments,
 )
 
+import urlparse
+import util
+import sys
+import datetime
+import services
 
 class BaseSocket(object):
 
@@ -297,43 +302,151 @@ class HttpListener(BaseListener):
             if server:
                 server.socket.close()
 
-'''
+
 class HttpServer(BaseSocket):
 
-    STATES = (
-        GREETING_REQUEST,
-        SOCKS5_REQUEST,
-        ACTIVE,
-    ) = range(3)
+    SERVICES = {
+        service.NAME: {
+            "service": service,
+            "headers": service.HEADERS,
+        } for service in services.BaseService.__subclasses__()
+    }   
 
-    MAP = {
-        GREETING_REQUEST: {
-            "method": _greeting_request,
-            "next": SOCKS5_REQUEST,
-        },
-        SOCKS5_REQUEST: {
-            "method": _socks5_request,
-            "next": ACTIVE,
-        },
-    }
+    def __init__(self, socket, socket_data):
+        super(HttpServer, self).__init__(socket, socket_data)
 
-    def __init__(
-        self,
-        socket,
-        socket_data,
-    ):
-        super(Socks5Server, self).__init__(socket, socket_data)
-        self._state = self.GREETING_REQUEST
+        self._state = constants.RECV_STATUS
+        self._service = {}
+        self._service_class = None
+        self._request_context = {}
+        self._state_machine = self._create_state_machine()
 
-    def read(self, max_size=constants.MAX_BUFFER_SIZE):
-        if self._state == Socks5Server.ACTIVE:
-            super(Socks5Server, self).read()
-        else:
-            super(Socks5Server, self).read(target=self)
+        self._reset()
+
+    def _create_state_machine(self):
+        return {
+            constants.RECV_STATUS: self._recv_status,
+            constants.RECV_HEADERS: self._recv_headers,
+            constants.RECV_CONTENT: self._recv_content,
+            constants.SEND_STATUS: self._send_status,
+            constants.SEND_HEADERS: self._send_headers,
+            constants.SEND_CONTENT: self._send_content,
+        }
 
     def write(self):
-        if self._state != Socks5Server.ACTIVE:
-            self.MAP[self._state]["method"](self)
-            self._state = self.MAP[self._state]["next"]
-        super(Socks5Server, self).write()
-'''
+        while self._state <= constants.SEND_CONTENT:
+            self._state_machine[self._state]()
+        self._reset()
+
+    def _recv_status(self):
+        valid_req, req_comps = self._http_request()
+        if not valid_req:
+            return
+
+        method, uri, signature = req_comps
+        parse = urlparse.urlparse(uri)
+        
+        self._service = self.SERVICES.get(parse.path, {})
+        if self._service:
+            self._service_class = self._service["service"]()
+        self._state += 1
+
+    def _recv_headers(self):
+        for i in range(constants.MAX_NUMBER_OF_HEADERS):
+            line = self._recv_line()
+            if line is None:
+                break
+            if not line:
+                self._state += 1
+                break
+            x, y = line.split(":", 1)
+            if x in self._service.get("headers", {}):
+                self._request_context["service_headers"][x] = y
+            self._request_context["headers"][x] = y
+        else:
+            raise RuntimeError('Too many headers')
+
+    def _recv_content(self):
+        if constants.CONTENT_LENGTH in self._request_context["headers"]:
+            content_length = int(self._request_context["headers"][constants.CONTENT_LENGTH])
+            if len(self._buffer) > content_length:
+                raise RuntimeError("Too much content")
+            elif len(self._buffer) < content_length:
+                return
+            request_context["content"] = self._buffer
+            self._buffer = ""
+        self._state += 1
+
+    def _send_status(self):
+        self._service_class.status(self._request_context)
+        self._buffer += (
+            "%s %s %s\r\n"
+        ) % (
+            constants.HTTP_SIGNATURE,
+            self._request_context["code"],
+            self._request_context["status"]
+        )
+        super(HttpServer, self).write()
+        self._state += 1
+        
+
+    def _send_headers(self):
+        self._service_class.headers(self._request_context)
+        for header, line in self._request_context["headers"].items():
+            self._buffer += '%s: %s\r\n' % (header, line)
+        self._buffer += '\r\n'
+        print self._buffer
+        super(HttpServer, self).write()
+        self._state += 1
+
+    def _send_content(self):
+        self._service_class.content(self._request_context)
+        self._buffer += self._request_context["response"]
+        super(HttpServer, self).write()
+        self._state += 1
+
+    def _http_request(self):
+        req = self._recv_line()
+        if not req:
+            return False, None
+
+        req_comps = req.split(" ", 2)
+        if len(req_comps) != 3:
+            raise RuntimeError("Incomplete HTTP protocol")
+        if req_comps[2] != constants.HTTP_SIGNATURE:
+            raise RuntimeError("Not HTTP protocol")
+
+        method, uri, signature = req_comps
+        if method != 'GET':
+            raise RuntimeError(
+                "HTTP unsupported method '%s'" % method
+            )
+        if not uri or uri[0] != '/':
+            raise RuntimeError("Invalid URI")
+
+        return True, req_comps
+
+    def _recv_line(self):
+        n = self._buffer.find(constants.CRLF_BIN)
+
+        if n == -1:
+            return None
+
+        line = self._buffer[:n].decode("utf-8")
+        self._buffer = self._buffer[n + len(constants.CRLF_BIN):]
+        return line
+        
+    def _reset(self):
+        self._request_context["code"] = 200
+        self._request_context["status"] = "OK"
+        self._request_context["headers"] = {}
+        self._request_context["service_headers"] = {}
+        self._request_context["content"] = ""
+        self._request_context["response"] = {}
+
+        self._service = {}
+        self._service_class = None
+        self._state = constants.RECV_STATUS
+
+    def read(self):
+        super(HttpServer, self).read(target=self)
