@@ -1,16 +1,10 @@
 #!/usr/bin/python
 
-import base64
-import Cookie
-import logging
-import os
-import tempfile
-import time
-import urlparse
+import datetime
 
 import constants
 import util
-import datetime
+
 
 class BaseService(object):
     NAME = "BaseService"
@@ -55,8 +49,12 @@ class ClockService(BaseService):
             datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
         )
         request_context["headers"] = {}
-        request_context["headers"][constants.CONTENT_TYPE] = constants.MIME_MAPPING["html"]
-        request_context["headers"][constants.CONTENT_LENGTH] = len(request_context["response"])
+        request_context[
+            "headers"
+        ][constants.CONTENT_TYPE] = constants.MIME_MAPPING["html"]
+        request_context[
+            "headers"
+        ][constants.CONTENT_LENGTH] = len(request_context["response"])
 
     def content(
         self,

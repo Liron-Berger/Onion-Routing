@@ -4,12 +4,17 @@ import argparse
 import logging
 import signal
 
+import async_sockets
 import util
 
 from async import (
     Proxy,
     BaseEvents,
 )
+
+server_map = {
+    server.NAME: server for server in async_sockets.BaseSocket.__subclasses__()
+}
 
 
 def parse_args():
@@ -21,9 +26,10 @@ def parse_args():
     parser.add_argument(
         '--proxy',
         action='append',
-        help='proxy server, format of proxy is: [%s:]%s' % (
+        help='proxy server, format of proxy is: [[%s:]%s:]%s' % (
             'bind_address',
             'bind_port',
+            'protocol',
         )
     )
     parser.add_argument(
@@ -85,10 +91,12 @@ def main():
         (
             bind_address,
             bind_port,
+            protocol,
         ) = x.split(':')
         proxy.add_listener(
             bind_address,
             int(bind_port),
+            server_map[protocol],
         )
 
     proxy.run()

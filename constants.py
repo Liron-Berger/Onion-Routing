@@ -4,8 +4,7 @@ MAX_BUFFER_SIZE = 1024
 MAX_LISTENER_CONNECTIONS = 10
 POLL_TIMEOUT = 10000
 
-
-
+""" SOCKS 5 CONSTANTS """
 
 VERSION = 0x05
 RESERVED = 0x00
@@ -51,11 +50,6 @@ SUPPORTED_ADDRESS_TYPE = (
     IP_4,
 )
 
-
-
-
-
-
 """ HTTP CONSTANTS """
 (
     RECV_STATUS,
@@ -70,34 +64,14 @@ HTTP_SIGNATURE = "HTTP/1.1"
 CRLF = "\r\n"
 CRLF_BIN = CRLF.encode("utf-8")
 MAX_NUMBER_OF_HEADERS = 100
-Cookie = "Cookie"
-BASE = "./files"
-INTERNAL_ERROR = "Internal Error"
-BLOCK_SIZE = 1024
 CONTENT_TYPE = "Content-Type"
 CONTENT_LENGTH = "Content-Length"
-AUTHORIZATION = "Authorization"
-UNATHORIZED = "Unathorized"
-
 
 MAX_HEADER_LENGTH = 4096
 MAX_NUMBER_OF_HEADERS = 100
-
-ACCOUNT = {"liron": "123456"}
-
-STATUSES = {'SUCCESS': '200 OK', 'Unauthorized': '401 Unauthorized', 'NotModified': '304 Not Modified', 'Redirect': '301 Moved Permanently'}
-HEADERS =   {   'Cache-Control': 'Cache-Control: no-cache, no-store, must-revalidate', 
-                'Pragma': 'Pragma: no-cache', 
-                'Expires': 'Expires: 0', 
-                'WWW-Authenticate':'WWW-Authenticate: Basic realm=\"myRealm\"' 
-            }
 
 MIME_MAPPING = {
     'html': 'text/html',
     'png': 'image/png',
     'txt': 'text/plain',
 }
-                                
-# vim: expandtab tabstop=4 shiftwidth=4
-
-

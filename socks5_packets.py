@@ -3,8 +3,8 @@
 import constants
 import util
 
-from errors import ProtocolError
-from errors import NotEnoughArguments
+from util import ProtocolError
+from util import NotEnoughArguments
 
 
 class Packet(object):

@@ -4,23 +4,21 @@ import errno
 import logging
 import socket
 import traceback
+import urlparse
 
 import async
 import constants
+import services
 import socks5_packets
 
-from errors import (
+from util import (
     DisconnectError,
     NotEnoughArguments,
 )
 
-import urlparse
-import util
-import sys
-import datetime
-import services
 
 class BaseSocket(object):
+    NAME = "BaseSocket"
 
     def __init__(
         self,
@@ -84,6 +82,7 @@ class BaseSocket(object):
 
 
 class Socks5Server(BaseSocket):
+    NAME = "Socks5Server"
 
     def _greeting_request(self):
         try:
@@ -213,9 +212,8 @@ class Socks5Server(BaseSocket):
         return reply
 
 
-class BaseListener(BaseSocket):
-
-    NAME = "Base"
+class Listener(BaseSocket):
+    NAME = "Listener"
 
     def __init__(
         self,
@@ -224,11 +222,13 @@ class BaseListener(BaseSocket):
         bind_port,
         max_conn,
         socket_data,
+        server_type,
     ):
-        super(BaseListener, self).__init__(socket, socket_data)
+        super(Listener, self).__init__(socket, socket_data)
 
         self._socket.bind((bind_address, bind_port))
         self._socket.listen(max_conn)
+        self._server_type = server_type
 
     def read(self):
         try:
@@ -236,57 +236,7 @@ class BaseListener(BaseSocket):
 
             s, addr = self._socket.accept()
 
-            server = BaseSocket(
-                s,
-                self._socket_data,
-            )
-
-            self._socket_data[
-                server.socket.fileno()
-            ] = {
-                "async_socket": server,
-                "state": async.Proxy.ACTIVE,
-            }
-        except Exception:
-            logging.error(traceback.format_exc())
-            if server:
-                server.socket.close()
-
-
-class Socks5Listener(BaseListener):
-
-    def read(self):
-        try:
-            server = None
-
-            s, addr = self._socket.accept()
-
-            server = Socks5Server(
-                s,
-                self._socket_data,
-            )
-
-            self._socket_data[
-                server.socket.fileno()
-            ] = {
-                "async_socket": server,
-                "state": async.Proxy.ACTIVE,
-            }
-        except Exception:
-            logging.error(traceback.format_exc())
-            if server:
-                server.socket.close()
-
-
-class HttpListener(BaseListener):
-
-    def read(self):
-        try:
-            server = None
-
-            s, addr = self._socket.accept()
-
-            server = HttpServer(
+            server = self._server_type(
                 s,
                 self._socket_data,
             )
@@ -304,13 +254,14 @@ class HttpListener(BaseListener):
 
 
 class HttpServer(BaseSocket):
+    NAME = "HttpServer"
 
     SERVICES = {
         service.NAME: {
             "service": service,
             "headers": service.HEADERS,
         } for service in services.BaseService.__subclasses__()
-    }   
+    }
 
     def __init__(self, socket, socket_data):
         super(HttpServer, self).__init__(socket, socket_data)
@@ -333,6 +284,9 @@ class HttpServer(BaseSocket):
             constants.SEND_CONTENT: self._send_content,
         }
 
+    def read(self):
+        super(HttpServer, self).read(target=self)
+
     def write(self):
         while self._state <= constants.SEND_CONTENT:
             self._state_machine[self._state]()
@@ -345,7 +299,7 @@ class HttpServer(BaseSocket):
 
         method, uri, signature = req_comps
         parse = urlparse.urlparse(uri)
-        
+
         self._service = self.SERVICES.get(parse.path, {})
         if self._service:
             self._service_class = self._service["service"]()
@@ -368,12 +322,14 @@ class HttpServer(BaseSocket):
 
     def _recv_content(self):
         if constants.CONTENT_LENGTH in self._request_context["headers"]:
-            content_length = int(self._request_context["headers"][constants.CONTENT_LENGTH])
+            content_length = int(
+                self._request_context["headers"][constants.CONTENT_LENGTH]
+            )
             if len(self._buffer) > content_length:
                 raise RuntimeError("Too much content")
             elif len(self._buffer) < content_length:
                 return
-            request_context["content"] = self._buffer
+            self._request_context["content"] = self._buffer
             self._buffer = ""
         self._state += 1
 
@@ -388,7 +344,6 @@ class HttpServer(BaseSocket):
         )
         super(HttpServer, self).write()
         self._state += 1
-        
 
     def _send_headers(self):
         self._service_class.headers(self._request_context)
@@ -435,7 +390,7 @@ class HttpServer(BaseSocket):
         line = self._buffer[:n].decode("utf-8")
         self._buffer = self._buffer[n + len(constants.CRLF_BIN):]
         return line
-        
+
     def _reset(self):
         self._request_context["code"] = 200
         self._request_context["status"] = "OK"
@@ -447,6 +402,3 @@ class HttpServer(BaseSocket):
         self._service = {}
         self._service_class = None
         self._state = constants.RECV_STATUS
-
-    def read(self):
-        super(HttpServer, self).read(target=self)

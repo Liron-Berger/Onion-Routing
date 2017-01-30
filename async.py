@@ -9,7 +9,7 @@ import traceback
 
 import async_sockets
 import constants
-import errors
+import util
 
 
 class BaseEvents(object):
@@ -108,18 +108,20 @@ class Proxy(object):
         self,
         bind_address,
         bind_port,
+        server_type,
         connect_address=None,
         connect_port=None,
         max_conn=constants.MAX_LISTENER_CONNECTIONS,
     ):
         listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket_data[listener.fileno()] = {
-            "async_socket": async_sockets.HttpListener(
+            "async_socket": async_sockets.Listener(
                 listener,
                 bind_address,
                 bind_port,
                 max_conn,
                 self._socket_data,
+                server_type,
             ),
             "state": Proxy.LISTEN,
         }
@@ -168,7 +170,7 @@ class Proxy(object):
                                 except socket.error as e:
                                     if e.errno != errno.EWOULDBLOCK:
                                         raise
-                        except errors.DisconnectError:
+                        except util.DisconnectError:
                             self._close_connection(
                                 entry,
                                 entry["async_socket"].partner,
@@ -224,7 +226,7 @@ class Proxy(object):
             ),
         )
         entry["state"] = Proxy.CLOSING
-        
+
     def _remove_socket(self, async_socket):
         del self._socket_data[async_socket.socket.fileno()]
         async_socket.close()
