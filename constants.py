@@ -66,6 +66,12 @@ CRLF_BIN = CRLF.encode("utf-8")
 MAX_NUMBER_OF_HEADERS = 100
 CONTENT_TYPE = "Content-Type"
 CONTENT_LENGTH = "Content-Length"
+HEADERS = {
+    "Cache-Control": "no-cache, no-store, must-revalidate", 
+    "Pragma": "no-cache", 
+    "Expires": "0", 
+    "WWW-Authenticate": "Basic realm=\"myRealm\"" 
+}
 
 MAX_HEADER_LENGTH = 4096
 MAX_NUMBER_OF_HEADERS = 100
@@ -74,4 +80,8 @@ MIME_MAPPING = {
     'html': 'text/html',
     'png': 'image/png',
     'txt': 'text/plain',
+}
+
+ACCOUNTS = {
+    "Liron": "Berger",
 }

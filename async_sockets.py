@@ -259,7 +259,6 @@ class HttpServer(BaseSocket):
     SERVICES = {
         service.NAME: {
             "service": service,
-            "headers": service.HEADERS,
         } for service in services.BaseService.__subclasses__()
     }
 
@@ -270,6 +269,7 @@ class HttpServer(BaseSocket):
         self._service = {}
         self._service_class = None
         self._request_context = {}
+        self._application_context = {}
         self._state_machine = self._create_state_machine()
 
         self._reset()
@@ -289,7 +289,36 @@ class HttpServer(BaseSocket):
 
     def write(self):
         while self._state <= constants.SEND_CONTENT:
-            self._state_machine[self._state]()
+            try:
+                self._state_machine[self._state]()
+            except IOError as e:
+                traceback.print_exc()
+                if self._state <= self._send_status:
+                    self._state = constants.SEND_STATUS
+                    if e.errno == errno.ENOENT:
+                        self._send_error_message(
+                            404,
+                            "Not Found",
+                            constants.MIME_MAPPING["txt"],
+                            str(e),
+                        )
+                    else:
+                        self._send_error_message(
+                            500,
+                            "Internal Error",
+                            constants.MIME_MAPPING["txt"],
+                            str(e),
+                        )
+            except Exception as e:
+                traceback.print_exc()
+                if self._state <= self._send_status:
+                    self._state = constants.SEND_STATUS
+                    self._send_error_message(
+                        500,
+                        "Internal Error",
+                        constants.MIME_MAPPING["txt"],
+                        str(e),
+                    )
         self._reset()
 
     def _recv_status(self):
@@ -302,7 +331,16 @@ class HttpServer(BaseSocket):
 
         self._service = self.SERVICES.get(parse.path, {})
         if self._service:
-            self._service_class = self._service["service"]()
+            self._service_class = self._service["service"](
+                self._request_context,
+                parse,
+            )
+        else:
+            self._service_class = services.GetFileService(
+                self._request_context,
+                parse,
+                uri,
+            )
         self._state += 1
 
     def _recv_headers(self):
@@ -314,9 +352,7 @@ class HttpServer(BaseSocket):
                 self._state += 1
                 break
             x, y = line.split(":", 1)
-            if x in self._service.get("headers", {}):
-                self._request_context["service_headers"][x] = y
-            self._request_context["headers"][x] = y
+            self._request_context["headers"][x] = y.strip()
         else:
             raise RuntimeError('Too many headers')
 
@@ -332,9 +368,9 @@ class HttpServer(BaseSocket):
             self._request_context["content"] = self._buffer
             self._buffer = ""
         self._state += 1
+        self._service_class.run()
 
     def _send_status(self):
-        self._service_class.status(self._request_context)
         self._buffer += (
             "%s %s %s\r\n"
         ) % (
@@ -346,16 +382,13 @@ class HttpServer(BaseSocket):
         self._state += 1
 
     def _send_headers(self):
-        self._service_class.headers(self._request_context)
-        for header, line in self._request_context["headers"].items():
+        for header, line in self._request_context["response_headers"].items():
             self._buffer += '%s: %s\r\n' % (header, line)
         self._buffer += '\r\n'
-        print self._buffer
         super(HttpServer, self).write()
         self._state += 1
 
     def _send_content(self):
-        self._service_class.content(self._request_context)
         self._buffer += self._request_context["response"]
         super(HttpServer, self).write()
         self._state += 1
@@ -381,6 +414,20 @@ class HttpServer(BaseSocket):
 
         return True, req_comps
 
+    def _send_error_message(
+        self,
+        code,
+        status,
+        type,
+        error,
+    ):
+        self._request_context["code"] = code
+        self._request_context["status"] = status
+        self._request_context["response_headers"]["Content-Type"] = type
+        self._request_context["response_headers"]["Content-Length"] = len(error)
+        self._request_context["response_headers"]["Error"] = "%d %s" % (code, status)
+        self._request_context["response"] = error
+
     def _recv_line(self):
         n = self._buffer.find(constants.CRLF_BIN)
 
@@ -395,9 +442,10 @@ class HttpServer(BaseSocket):
         self._request_context["code"] = 200
         self._request_context["status"] = "OK"
         self._request_context["headers"] = {}
-        self._request_context["service_headers"] = {}
+        self._request_context["response_headers"] = {}
         self._request_context["content"] = ""
-        self._request_context["response"] = {}
+        self._request_context["response"] = ""
+        self._request_context["application_context"] = self._application_context
 
         self._service = {}
         self._service_class = None
