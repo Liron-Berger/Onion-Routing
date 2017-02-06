@@ -24,6 +24,7 @@ class BaseSocket(object):
         self,
         socket,
         socket_data,
+        application_context,
     ):
         self._socket = socket
         self._socket.setblocking(False)
@@ -32,6 +33,7 @@ class BaseSocket(object):
         self._partner = None
 
         self._socket_data = socket_data
+        self._application_context = application_context
 
     def read(self, target=None, max_size=constants.MAX_BUFFER_SIZE):
         if not target:
@@ -53,6 +55,11 @@ class BaseSocket(object):
             ]
 
     def close(self):
+        logging.info(
+            "socket fd: %d closed" % (
+                self._socket.fileno(),
+            ),
+        )
         self._socket.close()
         self._buffer = ""
 
@@ -79,6 +86,49 @@ class BaseSocket(object):
     @partner.setter
     def partner(self, partner):
         self._partner = partner
+
+
+class Listener(BaseSocket):
+    NAME = "Listener"
+
+    def __init__(
+        self,
+        socket,
+        bind_address,
+        bind_port,
+        max_conn,
+        socket_data,
+        server_type,
+        application_context,
+    ):
+        super(Listener, self).__init__(socket, socket_data, application_context)
+
+        self._socket.bind((bind_address, bind_port))
+        self._socket.listen(max_conn)
+        self._server_type = server_type
+
+    def read(self):
+        try:
+            server = None
+
+            s, addr = self._socket.accept()
+
+            server = self._server_type(
+                s,
+                self._socket_data,
+                self._application_context,
+            )
+
+            self._socket_data[
+                server.socket.fileno()
+            ] = {
+                "async_socket": server,
+                "state": async.Proxy.ACTIVE,
+            }
+        except Exception:
+            logging.error(traceback.format_exc())
+            if server:
+                server.socket.close()
 
 
 class Socks5Server(BaseSocket):
@@ -149,9 +199,15 @@ class Socks5Server(BaseSocket):
         self,
         socket,
         socket_data,
+        application_context,
     ):
-        super(Socks5Server, self).__init__(socket, socket_data)
+        super(Socks5Server, self).__init__(socket, socket_data, application_context)
         self._state = self.GREETING_REQUEST
+
+    def _create_state_machine(
+        self,
+    ):
+        pass
 
     def read(self, max_size=constants.MAX_BUFFER_SIZE):
         if self._state == Socks5Server.ACTIVE:
@@ -182,6 +238,7 @@ class Socks5Server(BaseSocket):
             new_socket = BaseSocket(
                 s,
                 self._socket_data,
+                self._application_context,
             )
 
             try:
@@ -202,6 +259,7 @@ class Socks5Server(BaseSocket):
                 "async_socket": new_socket,
                 "state": async.Proxy.ACTIVE,
             }
+
         except socket.error as e:
             if e.errno not in (errno.EINPROGRESS, errno.EWOULDBLOCK):
                 logging.error(traceback.format_exc())
@@ -210,47 +268,6 @@ class Socks5Server(BaseSocket):
             logging.error(traceback.format_exc())
             reply = constants.GENERAL_SERVER_FAILURE
         return reply
-
-
-class Listener(BaseSocket):
-    NAME = "Listener"
-
-    def __init__(
-        self,
-        socket,
-        bind_address,
-        bind_port,
-        max_conn,
-        socket_data,
-        server_type,
-    ):
-        super(Listener, self).__init__(socket, socket_data)
-
-        self._socket.bind((bind_address, bind_port))
-        self._socket.listen(max_conn)
-        self._server_type = server_type
-
-    def read(self):
-        try:
-            server = None
-
-            s, addr = self._socket.accept()
-
-            server = self._server_type(
-                s,
-                self._socket_data,
-            )
-
-            self._socket_data[
-                server.socket.fileno()
-            ] = {
-                "async_socket": server,
-                "state": async.Proxy.ACTIVE,
-            }
-        except Exception:
-            logging.error(traceback.format_exc())
-            if server:
-                server.socket.close()
 
 
 class HttpServer(BaseSocket):
@@ -262,14 +279,16 @@ class HttpServer(BaseSocket):
         } for service in services.BaseService.__subclasses__()
     }
 
-    def __init__(self, socket, socket_data):
-        super(HttpServer, self).__init__(socket, socket_data)
+    def __init__(self, socket, socket_data, application_context):
+        super(HttpServer, self).__init__(socket, socket_data, application_context)
 
         self._state = constants.RECV_STATUS
         self._service = {}
         self._service_class = None
-        self._request_context = {}
-        self._application_context = {}
+        self._request_context = {
+            "application_context": self._application_context,
+            "accounts": {},
+        }
         self._state_machine = self._create_state_machine()
 
         self._reset()
@@ -445,7 +464,6 @@ class HttpServer(BaseSocket):
         self._request_context["response_headers"] = {}
         self._request_context["content"] = ""
         self._request_context["response"] = ""
-        self._request_context["application_context"] = self._application_context
 
         self._service = {}
         self._service_class = None

@@ -75,10 +75,15 @@ def main():
     if args.daemon:
         util.daemonize(args.log_file)
 
+    application_context = {
+        "connections": {},
+    }
+
     proxy = Proxy(
         args.poll_timeout,
         args.block_size,
         args.event_type_class,
+        application_context,
     )
 
     def exit_handler(signal, frame):

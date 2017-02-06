@@ -95,11 +95,14 @@ class Proxy(object):
         poll_timeout=10000,
         block_size=1024,
         poll_object=SelectEvents,
+        application_context={},
     ):
         self._poll_timeout = poll_timeout
         self._block_size = block_size
 
         self._poll_object = poll_object
+
+        self._application_context = application_context
 
     def close_proxy(self):
         self._close_proxy = True
@@ -122,6 +125,7 @@ class Proxy(object):
                 max_conn,
                 self._socket_data,
                 server_type,
+                self._application_context,
             ),
             "state": Proxy.LISTEN,
         }
@@ -214,18 +218,10 @@ class Proxy(object):
         return poller
 
     def _close_connection(self, entry, partner):
-        self._close_entry(entry)
-        if partner is not None:
-            self._close_entry(self._socket_data[partner.socket.fileno()])
-        entry["async_socket"].buffer = ""
-
-    def _close_entry(self, entry):
-        logging.info(
-            "socket fd: %d is closing" % (
-                entry["async_socket"].socket.fileno(),
-            ),
-        )
         entry["state"] = Proxy.CLOSING
+        if partner is not None:
+            self._socket_data[partner.socket.fileno()] = Proxy.CLOSING
+        entry["async_socket"].buffer = ""        
 
     def _remove_socket(self, async_socket):
         del self._socket_data[async_socket.socket.fileno()]

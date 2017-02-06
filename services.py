@@ -285,7 +285,7 @@ class LoginService(BaseService):
             self._login = True
             random_cookie = base64.b64encode(os.urandom(64))
             self._cookie["login"] = random_cookie
-            self._request_context["application_context"].setdefault(
+            self._request_context["accounts"].setdefault(
                 "account_cookies",
                 {},
             )[random_cookie] = account
@@ -318,7 +318,7 @@ class Secret2Service(BaseService):
 
         v = self._cookie.get("login")
         if v:
-            self._account = self._request_context["application_context"].get("account_cookies", {}).get(v.value)
+            self._account = self._request_context["accounts"].get("account_cookies", {}).get(v.value)
 
         super(Secret2Service, self).run()
 
@@ -344,3 +344,24 @@ class Secret2Service(BaseService):
     ):
         if self._account:
             self._request_context["response"] = "welcome %s" % self._account
+
+
+class StaticsticsService(BaseService):
+    NAME = "/statistics"
+
+    def __init__(
+        self,
+        request_context,
+        parse,
+    ):
+        super(StaticsticsService, self).__init__(
+            request_context,
+            parse,
+        )
+
+    def _content(
+        self,
+    ):
+        if self._account:
+            self._request_context["response"] = "welcome %s" % self._account
+    
