@@ -2,90 +2,21 @@
 
 import errno
 import logging
-import os
 import select
 import socket
 import traceback
 
-import async_sockets
-import constants
-import util
+from sockets.listener import Listener
+from common import constants
+from common import util
 
-
-class BaseEvents(object):
-    POLLIN, POLLOUT, POLLERR, POLLHUP = (
-        1, 4, 8, 16,
-    ) if os.name == "nt" else (
-        select.POLLIN, select.POLLOUT, select.POLLERR, select.POLLHUP,
-    )
-
-    NAME = "base"
-
-    def __init__(self):
-        pass
-
-    def register(self, fd, event):
-        pass
-
-    def poll(self, timeout):
-        raise NotImplementedError()
-
-    def supported(self):
-        pass
-
-
-if os.name != "nt":
-    class PollEvents(BaseEvents):
-        NAME = "Poll"
-
-        def __init__(self):
-            super(PollEvents, self).__init__()
-            self._poller = select.poll()
-
-        def register(self, fd, event):
-            self._poller.register(fd, event)
-
-        def poll(self, timeout):
-            return self._poller.poll(timeout)
-
-
-class SelectEvents(BaseEvents):
-    NAME = "Select"
-
-    def __init__(self):
-        super(SelectEvents, self).__init__()
-        self._fd_dict = {}
-
-    def register(self, fd, event):
-        self._fd_dict[fd] = event
-
-    def poll(self, timeout):
-        rlist, wlist, xlist = [], [], []
-
-        for fd in self._fd_dict:
-            if self._fd_dict[fd] & SelectEvents.POLLERR:
-                xlist.append(fd)
-            if self._fd_dict[fd] & SelectEvents.POLLIN:
-                rlist.append(fd)
-            if self._fd_dict[fd] & SelectEvents.POLLOUT:
-                wlist.append(fd)
-
-        r, w, x = select.select(rlist, wlist, xlist, timeout)
-
-        poll_dict = {}
-        for s in r + w + x:
-            if s in r:
-                poll_dict[s.fileno()] = SelectEvents.POLLIN
-            if s in w:
-                poll_dict[s.fileno()] = SelectEvents.POLLOUT
-            if s in x:
-                poll_dict[s.fileno()] = SelectEvents.POLLERR
-        return poll_dict.items()
+from events import (
+    BaseEvents,
+    SelectEvents,
+)
 
 
 class Proxy(object):
-
-    CLOSING, LISTEN, ACTIVE = range(3)
 
     _close_proxy = False
     _socket_data = {}
@@ -103,6 +34,7 @@ class Proxy(object):
         self._poll_object = poll_object
 
         self._application_context = application_context
+        self._application_context["socket_data"] = self._socket_data
 
     def close_proxy(self):
         self._close_proxy = True
@@ -118,7 +50,7 @@ class Proxy(object):
     ):
         listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket_data[listener.fileno()] = {
-            "async_socket": async_sockets.Listener(
+            "async_socket": Listener(
                 listener,
                 bind_address,
                 bind_port,
@@ -127,7 +59,7 @@ class Proxy(object):
                 server_type,
                 self._application_context,
             ),
-            "state": Proxy.LISTEN,
+            "state": constants.PROXY_LISTEN,
         }
 
     def run(self):
@@ -138,7 +70,7 @@ class Proxy(object):
                 for fd in self._socket_data.keys()[:]:
                     entry = self._socket_data[fd]
                     if (
-                        entry["state"] == Proxy.CLOSING and
+                        entry["state"] == constants.PROXY_CLOSING and
                         not entry["async_socket"].buffer
                     ):
                         self._remove_socket(entry["async_socket"])
@@ -203,9 +135,9 @@ class Proxy(object):
             entry = self._socket_data[fd]
             event = BaseEvents.POLLERR
             if (
-                entry["state"] == Proxy.LISTEN or
+                entry["state"] == constants.PROXY_LISTEN or
                 (
-                    entry["state"] == Proxy.ACTIVE and
+                    entry["state"] == constants.PROXY_ACTIVE and
                     len(
                         entry["async_socket"].buffer
                     ) < self._block_size
@@ -218,15 +150,22 @@ class Proxy(object):
         return poller
 
     def _close_connection(self, entry, partner):
-        entry["state"] = Proxy.CLOSING
+        entry["state"] = constants.PROXY_CLOSING
         if partner is not None:
-            self._socket_data[partner.socket.fileno()] = Proxy.CLOSING
-        entry["async_socket"].buffer = ""        
+            self._socket_data[
+                partner.socket.fileno()
+            ]["state"] = constants.PROXY_CLOSING
+        entry["async_socket"].buffer = ""
 
     def _remove_socket(self, async_socket):
-        del self._socket_data[async_socket.socket.fileno()]
-        async_socket.close()
+        try:
+            del self._socket_data[async_socket.socket.fileno()]
+            async_socket.close()
+        except Exception:
+            print traceback.format_exc()
+            import sys
+            sys.exit(0)
 
     def _terminate(self):
         for x in self._socket_data:
-            self._socket_data[x]["state"] = Proxy.CLOSING
+            self._socket_data[x]["state"] = constants.PROXY_CLOSING

@@ -50,6 +50,13 @@ SUPPORTED_ADDRESS_TYPE = (
     IP_4,
 )
 
+
+(
+    PROXY_ACTIVE,
+    PROXY_LISTEN,
+    PROXY_CLOSING,
+) = range(3)
+
 """ HTTP CONSTANTS """
 (
     RECV_STATUS,

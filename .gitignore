@@ -1,9 +1,1 @@
 *.pyc
-/*.pyc
-/async.pyc
-/async_sockets.pyc
-/constants.pyc
-/errors.pyc
-/services.pyc
-/socks5_packets.pyc
-/util.pyc

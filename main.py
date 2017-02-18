@@ -4,24 +4,20 @@ import argparse
 import logging
 import signal
 
-import async_sockets
-import util
+from common import util
+from sockets.base_socket import BaseSocket
 
-from async import (
-    Proxy,
+from async.proxy import Proxy
+from async.events import BaseEvents
+
+server_map = util.registry_by_name(
+    BaseSocket,
+)
+event_map = util.registry_by_name(
     BaseEvents,
 )
 
-server_map = {
-    server.NAME: server for server in async_sockets.BaseSocket.__subclasses__()
-}
-
-
 def parse_args():
-    event_map = {
-        event.NAME: event for event in BaseEvents.__subclasses__()
-    }
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--proxy',
@@ -47,7 +43,7 @@ def parse_args():
         '--daemon',
         default=False,
         type=bool,
-        help='foreground, default: %(default)s',
+        help='process becomes daemon, default: %(default)s',
     )
     parser.add_argument(
         '--poll-timeout',
@@ -77,6 +73,7 @@ def main():
 
     application_context = {
         "connections": {},
+        "accounts": {},
     }
 
     proxy = Proxy(

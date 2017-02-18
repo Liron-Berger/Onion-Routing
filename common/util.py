@@ -5,7 +5,9 @@ import os
 import signal
 
 
-def daemonize(log_fd):
+def daemonize(
+    log_fd
+):
     child = os.fork()
     if child != 0:
         os._exit(0)
@@ -32,15 +34,9 @@ def daemonize(log_fd):
         os._exit(0)
 
 
-def write_to_fd(
-    fd,
-    msg,
+def validate_ip(
+    ip
 ):
-    while msg:
-        msg = msg[os.write(fd, msg):]
-
-
-def validate_ip(ip):
     a = ip.split('.')
     if len(a) != 4:
         return False
@@ -61,6 +57,27 @@ def text_to_html(
     ).decode('utf-8')
 
 
+def create_table_from_sublists(table_data, title):
+    table = ""
+    table += '''<table border="1" width="100%">'''
+    table += "<tr><th>%s</th></tr>" % title
+    for row in table_data:
+        table += "<tr>"
+        for cell in row:
+           table += "<td>%s</td>" % cell
+        table += "</tr>"
+    table += "</table>"
+    return table
+
+
+def registry_by_name(
+    parent_cls,
+):
+    return {
+        cls.NAME: cls for cls in parent_cls.__subclasses__()
+    }
+
+
 class DisconnectError(RuntimeError):
     def __init__(self):
         super(DisconnectError, self).__init__("Socket Disconnected")
@@ -74,5 +91,3 @@ class ProtocolError(RuntimeError):
 class NotEnoughArguments(RuntimeError):
     def __init__(self):
         super(NotEnoughArguments, self).__init__("not enough arguments")
-
-#hello world
