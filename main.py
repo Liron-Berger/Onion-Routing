@@ -4,34 +4,36 @@ import argparse
 import logging
 import signal
 
+import async
+import sockets
+
 from common import util
-from sockets.base_socket import BaseSocket
 
-from async.proxy import Proxy
-from async.events import BaseEvents
 
-server_map = util.registry_by_name(
-    BaseSocket,
+listener_types = {
+    "socks5": sockets.Socks5Server,
+    "http": sockets.HttpServer,
+}
+poll_events = util.registry_by_name(
+    async.BaseEvents,
 )
-event_map = util.registry_by_name(
-    BaseEvents,
-)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--proxy',
-        action='append',
-        help='proxy server, format of proxy is: [[%s:]%s:]%s' % (
+        "--listener",
+        action="append",
+        help="listener proxy, format of listener is: [[%s:]%s:]%s" % (
             'bind_address',
             'bind_port',
-            'protocol',
+            'listener_type',
         )
     )
     parser.add_argument(
         '--event-type',
-        choices=event_map.keys(),
-        default=sorted(event_map.keys())[0],
+        choices=poll_events.keys(),
+        default=sorted(poll_events.keys())[0],
         help='async event type, default: %(default)s, choices: %(choices)s',
     )
     parser.add_argument(
@@ -52,14 +54,20 @@ def parse_args():
         help='poll timeout, default: %(default)s',
     )
     parser.add_argument(
-        '--block-size',
+        '--max-connections',
+        default=10,
+        type=int,
+        help='max number of connections per listener, default: %(default)s',
+    )
+    parser.add_argument(
+        '--max-buffer-size',
         default=1024,
         type=int,
-        help='block size, default: %(default)s',
+        help='max size of buffer in async_socket, default: %(default)s',
     )
 
     args = parser.parse_args()
-    args.event_type_class = event_map[args.event_type]
+    args.poll_object = poll_events[args.event_type]
     return args
 
 
@@ -71,36 +79,46 @@ def main():
     if args.daemon:
         util.daemonize(args.log_file)
 
-    application_context = {
-        "connections": {},
-        "accounts": {},
-    }
-
-    proxy = Proxy(
-        args.poll_timeout,
-        args.block_size,
-        args.event_type_class,
-        application_context,
-    )
-
     def exit_handler(signal, frame):
         proxy.close_proxy()
 
     signal.signal(signal.SIGINT, exit_handler)
     signal.signal(signal.SIGTERM, exit_handler)
 
-    for x in args.proxy:
+    application_context = {
+        "log": args.log_file,
+        "poll_object": args.poll_object,
+        "poll_timeout": args.poll_timeout,
+        "max_connections": args.max_connections,
+        "max_buffer_size": args.max_buffer_size,
+
+        "connections": {},
+    }
+
+    proxy = async.Proxy(
+        application_context,
+    )
+
+    for l in args.listener:
         (
             bind_address,
             bind_port,
-            protocol,
-        ) = x.split(':')
+            type,
+        ) = l.split(':')
+        logging.debug(
+            "new listener added: %s:%s. type: %s." % (
+                bind_address,
+                bind_port,
+                type,
+            )
+        )
         proxy.add_listener(
+            listener_types[type],
             bind_address,
             int(bind_port),
-            server_map[protocol],
         )
 
+    logging.debug("starting proxy...")
     proxy.run()
 
 

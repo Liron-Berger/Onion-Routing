@@ -6,7 +6,7 @@ import signal
 
 
 def daemonize(
-    log_fd
+    log_fd,
 ):
     child = os.fork()
     if child != 0:
@@ -35,7 +35,7 @@ def daemonize(
 
 
 def validate_ip(
-    ip
+    ip,
 ):
     a = ip.split('.')
     if len(a) != 4:
@@ -57,7 +57,10 @@ def text_to_html(
     ).decode('utf-8')
 
 
-def create_table_from_sublists(table_data, title):
+def create_table_from_sublists(
+    table_data,
+    title,
+):
     table = ""
     table += '''<table border="1" width="100%">'''
     table += "<tr><th>%s</th></tr>" % title
@@ -83,11 +86,6 @@ class DisconnectError(RuntimeError):
         super(DisconnectError, self).__init__("Socket Disconnected")
 
 
-class ProtocolError(RuntimeError):
+class Socks5Error(RuntimeError):
     def __init__(self):
-        super(ProtocolError, self).__init__("protocol error")
-
-
-class NotEnoughArguments(RuntimeError):
-    def __init__(self):
-        super(NotEnoughArguments, self).__init__("not enough arguments")
+        super(Socks5Error, self).__init__("Socks5 Protocol Error")

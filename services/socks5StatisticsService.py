@@ -20,6 +20,7 @@ class Socks5StatisticsService(BaseService):
         application_context,
         parse,
     ):
+        print "statistics!!!!!!!!!"
         super(Socks5StatisticsService, self).__init__(
             request_context,
             application_context,
@@ -52,7 +53,7 @@ class Socks5StatisticsService(BaseService):
                 "<td> %s </td>" % self._application_context["connections"][sock]["in"]["fd"] +
                 "<td> %s </td>" % self._application_context["connections"][sock]["in"]["bytes"] +
                 '''<td rowspan="2"> %s </td>''' % self._get_disconnect_form(
-                    sock, 
+                    sock,
                 )
             )           
 
@@ -66,7 +67,7 @@ class Socks5StatisticsService(BaseService):
 
     def _get_disconnect_form(
         self,
-        sock1,
+        sock,
     ):
         return '''
         <form action="disconnect">
@@ -74,5 +75,5 @@ class Socks5StatisticsService(BaseService):
             <input type="submit" value="Disconnect">
         </form>
         ''' % (
-            sock1,
+            sock.socket.fileno(),
         )

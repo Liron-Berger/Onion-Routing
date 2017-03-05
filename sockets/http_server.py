@@ -6,12 +6,12 @@ import urlparse
 
 from base_socket import BaseSocket
 from common import constants
+from common import util
 from services import BaseService
 from services import GetFileService
 
 
 class HttpServer(BaseSocket):
-    NAME = "HttpServer"
 
     SERVICES = {
         service.NAME: {
@@ -19,14 +19,19 @@ class HttpServer(BaseSocket):
         } for service in BaseService.__subclasses__()
     }
 
-    def __init__(self, socket, socket_data, application_context):
+    def __init__(
+        self,
+        socket,
+        state,
+        application_context,
+    ):
         super(HttpServer, self).__init__(
             socket,
-            socket_data,
+            state,
             application_context,
         )
 
-        self._state = constants.RECV_STATUS
+        self._machine_state = constants.RECV_STATUS
         self._service = {}
         self._service_class = None
         self._request_context = {
@@ -37,7 +42,9 @@ class HttpServer(BaseSocket):
 
         self._reset()
 
-    def _create_state_machine(self):
+    def _create_state_machine(
+        self,
+    ):
         return {
             constants.RECV_STATUS: self._recv_status,
             constants.RECV_HEADERS: self._recv_headers,
@@ -46,9 +53,6 @@ class HttpServer(BaseSocket):
             constants.SEND_HEADERS: self._send_headers,
             constants.SEND_CONTENT: self._send_content,
         }
-
-    def read(self):
-        super(HttpServer, self).read(target=self)
 
     def write(self):
         while self._state <= constants.SEND_CONTENT:

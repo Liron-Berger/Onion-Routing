@@ -1,48 +1,65 @@
 #!/usr/bin/python
 
-import logging
-
+from common.util import DisconnectError
+from async import pollable
+from async import events
 from common import constants
 
-from common.util import DisconnectError
 
+class BaseSocket(pollable.Pollable):
+    """BaseSocket(socket, state, application_context) -> BaseSocket object.
 
-class BaseSocket(object):
-    NAME = "BaseSocket"
+    Inherits from pollable.
+    creates a wrapper for socket.
+    properties:
+        socket - regular python socket used for sending and writing.
+        state - (ACTIVE, LISTEN, CLOSE) for reading and writing in proxy.
+        buffer - a buffer for storing recieved and sending data.
+        partner - the partner of the socket (used only in case of a proxy)
+            as a default partner is this BaseSocket (self).
+        max_buffer_size - maximum size of buffer.
+
+        application_context - dictionary that stores the important data for
+            the application.
+    """
 
     def __init__(
         self,
         socket,
-        socket_data,
+        state,
         application_context,
     ):
         self._socket = socket
+        self._state = state
+        self._max_buffer_size = application_context["max_buffer_size"]
+        self._application_context = application_context
+        self._buffer = ""
+        self._partner = self
+
         self._socket.setblocking(False)
 
-        self._buffer = ""
-        self._partner = None
+    def read(self):
+        """read() -> reciving data from partner.
 
-        self._socket_data = socket_data
-        self._application_context = application_context
+        recives data until disconnect or buffer is full.
+        data is stored in the partner's buffer.
+        """
 
-    def read(
-        self,
-        target=None,
-        max_size=constants.MAX_BUFFER_SIZE,
-    ):
-        if not target:
-            target = self._partner
-        while len(target.buffer) < max_size:
+        while not self._partner.full_buffer():
             data = self._socket.recv(
-                max_size - len(target.buffer),
+                self._max_buffer_size - len(self._partner.buffer),
             )
             if not data:
                 raise DisconnectError()
-            target.buffer += data
+            self._partner.buffer += data
 
-    def write(
-        self,
-    ):
+    def write(self):
+        """write() -> sends the buffer to socket.
+
+        sends until buffer is empty.
+        if not the whole buffer was sent, buffer = the remaining message.
+        """
+
         while self._buffer:
             self._buffer = self._buffer[
                 self._socket.send(
@@ -50,16 +67,46 @@ class BaseSocket(object):
                 ):
             ]
 
-    def close(
-        self,
-    ):
-        logging.info(
-            "socket fd: %d closed" % (
-                self._socket.fileno(),
-            ),
-        )
+    def event(self):
+        """event() -> returns the needed async event to async proxy.
+
+        default is error.
+        buffer is not full and state is ACTIVE - event is read.
+        buffer is not empty - event is write.
+        """
+
+        event = events.BaseEvents.POLLERR
+        if (
+            self._state == constants.ACTIVE and
+            not self.full_buffer()
+        ):
+            event |= events.BaseEvents.POLLIN
+        if self._buffer:
+            event |= events.BaseEvents.POLLOUT
+        return event
+
+    def fileno(self):
+        """fileno() -> returns socket's fileno."""
+
+        return self._socket.fileno()
+
+    def close(self):
+        """close() -> closing socket and empty buffer."""
+
         self._socket.close()
         self._buffer = ""
+
+    def remove(self):
+        """remove() -> returns whether socket should be removed."""
+
+        return self._state == constants.CLOSING and not self._buffer
+
+    def full_buffer(self):
+        """full_buffer() -> return whether buffer is bigger
+            than max_buffer_size.
+        """
+
+        return len(self._buffer) >= self._max_buffer_size
 
     @property
     def socket(self):
@@ -68,6 +115,14 @@ class BaseSocket(object):
     @socket.setter
     def socket(self, socket):
         self._socket = socket
+
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, state):
+        self._state = state
 
     @property
     def buffer(self):

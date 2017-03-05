@@ -31,9 +31,9 @@ class DisconnectService(BaseService):
     ):
         parameters = urlparse.parse_qs(self._parse.query)
         connection = int(parameters["connection"][0])
-        if connection in self._application_context["connections"]:
-            entry = self._application_context["socket_data"][connection]
-            entry["state"] = constants.PROXY_CLOSING
-            self._application_context["socket_data"][entry["async_socket"].partner.socket.fileno()]["state"] = constants.PROXY_CLOSING
+        entry = self._application_context["socket_data"].get(connection)
+        if entry in self._application_context["connections"]:
+            entry.state = constants.CLOSING
+            entry.partner.state = constants.CLOSING
 
         self._request_context["response"] = '<a href="statistics">Back to Statistics</a>'

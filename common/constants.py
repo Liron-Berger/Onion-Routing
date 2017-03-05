@@ -1,5 +1,51 @@
 #!/usr/bin/python
 
+""" proxy """
+PROXY_STATES = (
+    ACTIVE,
+    LISTEN,
+    CLOSING,
+) = range(3)
+
+""" Socks5 server """
+SOCKS5_STATES = (
+    RECV_GREETING,
+    SEND_GREETING,
+    RECV_CONNECTION_REQUEST,
+    SEND_CONNECTION_REQUEST,
+    PARTNER_STATE,
+) = range(5)
+
+SOCKS5_VERSION = 0x05
+RESERVED = 0x00
+SUPPORTED_METHODS = (
+    0x00,
+)
+COMMANDS = (
+    CONNECT,
+) = (
+    0x01,
+)
+ADDRESS_TYPE = (
+    IP_4,
+) = (
+    0x01,
+)
+
+REPLY_STATUS = (
+    SUCCESS,
+    GENERAL_SERVER_FAILURE,
+) = (
+    0x00,
+    0x01,
+)
+
+""" Http """
+
+
+
+
+
 MAX_BUFFER_SIZE = 1024
 MAX_LISTENER_CONNECTIONS = 10
 POLL_TIMEOUT = 10000
