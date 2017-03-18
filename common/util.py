@@ -89,3 +89,15 @@ class DisconnectError(RuntimeError):
 class Socks5Error(RuntimeError):
     def __init__(self):
         super(Socks5Error, self).__init__("Socks5 Protocol Error")
+
+class HTTPError(RuntimeError):
+    def __init__(
+        self,
+        code,
+        status,
+        message="",
+    ):
+        super(HTTPError, self).__init__(message)
+        self.code = code
+        self.status = status
+        self.message = message

@@ -1,23 +1,24 @@
 #!/usr/bin/python
 
 import errno
-import traceback
 import urlparse
+import socket
 
+from async import events
 from base_socket import BaseSocket
 from common import constants
 from common import util
 from services import BaseService
-from services import GetFileService
+from services import FileService
 
 
 class HttpServer(BaseSocket):
 
     SERVICES = {
-        service.NAME: {
-            "service": service,
-        } for service in BaseService.__subclasses__()
+        service.NAME: service for service in BaseService.__subclasses__()
     }
+
+    request_context = {}
 
     def __init__(
         self,
@@ -31,14 +32,10 @@ class HttpServer(BaseSocket):
             application_context,
         )
 
-        self._machine_state = constants.RECV_STATUS
-        self._service = {}
-        self._service_class = None
-        self._request_context = {
-            "application_context": self._application_context,
-            "accounts": {},
-        }
         self._state_machine = self._create_state_machine()
+        self._machine_state = constants.RECV_STATUS
+
+        self._service_class = None
 
         self._reset()
 
@@ -46,126 +43,168 @@ class HttpServer(BaseSocket):
         self,
     ):
         return {
-            constants.RECV_STATUS: self._recv_status,
-            constants.RECV_HEADERS: self._recv_headers,
-            constants.RECV_CONTENT: self._recv_content,
-            constants.SEND_STATUS: self._send_status,
-            constants.SEND_HEADERS: self._send_headers,
-            constants.SEND_CONTENT: self._send_content,
+            constants.RECV_STATUS: {
+                "method": self._recv_status,
+                "next": constants.RECV_HEADERS,
+            },
+            constants.RECV_HEADERS: {
+                "method": self._recv_headers,
+                "next": constants.RECV_CONTENT,
+            },
+            constants.RECV_CONTENT: {
+                "method": self._recv_content,
+                "next": constants.SEND_STATUS,
+            },
+            constants.SEND_STATUS: {
+                "method": self._send_status,
+                "next": constants.SEND_HEADERS,
+            },
+            constants.SEND_HEADERS: {
+                "method": self._send_headers,
+                "next": constants.SEND_CONTENT,
+            },
+            constants.SEND_CONTENT: {
+                "method": self._send_content,
+                "next": constants.RECV_STATUS,
+            },
         }
 
-    def write(self):
-        while self._state <= constants.SEND_CONTENT:
-            try:
-                self._state_machine[self._state]()
-            except IOError as e:
-                traceback.print_exc()
-                if self._state <= self._send_status:
-                    self._state = constants.SEND_STATUS
-                    if e.errno == errno.ENOENT:
-                        self._send_error_message(
-                            404,
-                            "Not Found",
-                            constants.MIME_MAPPING["txt"],
-                            str(e),
-                        )
-                    else:
-                        self._send_error_message(
-                            500,
-                            "Internal Error",
-                            constants.MIME_MAPPING["txt"],
-                            str(e),
-                        )
-            except Exception as e:
-                traceback.print_exc()
-                if self._state <= self._send_status:
-                    self._state = constants.SEND_STATUS
-                    self._send_error_message(
-                        500,
-                        "Internal Error",
-                        constants.MIME_MAPPING["txt"],
-                        str(e),
-                    )
-        self._reset()
+    def read(self):
+        data = ""
+        try:
+            while not self.full_buffer():
+                data = self._socket.recv(
+                    self._max_buffer_size - len(self._buffer),
+                )
+                if not data:
+                    break
+                self._buffer += data
+        except socket.error as e:
+            if e.errno != errno.EWOULDBLOCK:
+                raise
+        if not self._buffer:
+            raise util.DisconnectError()
+        self.on_receive()
+
+    def on_receive(self):
+        try:
+            while self._state_machine[self._machine_state]["method"]():
+                self._machine_state = self._state_machine[
+                    self._machine_state
+                ]["next"]
+        except util.HTTPError as e:
+            self.request_context["code"] = e.code
+            self.request_context["status"] = e.status
+            self.request_context["response"] = e.message
+            self.request_context[
+                "response_headers"
+            ]["Content-Length"] = len(self.request_context["response"])
+            self.request_context[
+                "response_headers"
+            ]["Content-Type"] = "text/plain"
+            self._service_class = BaseService(
+                self.request_context,
+                self._application_context,
+            )
 
     def _recv_status(self):
-        valid_req, req_comps = self._http_request()
-        if not valid_req:
-            return
+        if not self._http_request():
+            return False
 
-        method, uri, signature = req_comps
-        parse = urlparse.urlparse(uri)
-
-        self._service = self.SERVICES.get(parse.path, {})
-        if self._service:
-            self._service_class = self._service["service"](
-                self._request_context,
+        try:
+            self._service_class = self.SERVICES.get(
+                self.request_context["parse"].path,
+                FileService,
+            )(
+                self.request_context,
                 self._application_context,
-                parse,
             )
-        else:
-            self._service_class = GetFileService(
-                self._request_context,
-                self._application_context,
-                parse,
-                uri,
+        except KeyError:
+            raise util.HTTPError(
+                code=500,
+                status="Internal Error",
+                message="service not supported",
             )
-        self._state += 1
+        finally:
+            self._service_class.before_request_headers()
+        return True
 
     def _recv_headers(self):
-        for i in range(constants.MAX_NUMBER_OF_HEADERS):
-            line = self._recv_line()
-            if line is None:
-                break
-            if not line:
-                self._state += 1
-                break
-            x, y = line.split(":", 1)
-            self._request_context["headers"][x] = y.strip()
+        if self._get_headers():
+            self._service_class.before_response_content()
+            return True
         else:
-            raise RuntimeError('Too many headers')
+            self._service_class.before_response_content()
+            return False
 
     def _recv_content(self):
-        if constants.CONTENT_LENGTH in self._request_context["headers"]:
-            content_length = int(
-                self._request_context["headers"][constants.CONTENT_LENGTH]
-            )
-            if len(self._buffer) > content_length:
-                raise RuntimeError("Too much content")
-            elif len(self._buffer) < content_length:
-                return
-            self._request_context["content"] = self._buffer
-            self._buffer = ""
-        self._state += 1
-        self._service_class.run()
+        self._get_content()
+        while self._service_class.handle_content():
+            pass
+        if "content_length" not in self.request_context:
+            self._service_class.before_response_status()
+            return True
+        elif not self._buffer:
+            return False
 
     def _send_status(self):
-        self._buffer += (
+        self._buffer = (
             "%s %s %s\r\n"
         ) % (
             constants.HTTP_SIGNATURE,
-            self._request_context["code"],
-            self._request_context["status"]
+            self.request_context["code"],
+            self.request_context["status"]
         )
-        super(HttpServer, self).write()
-        self._state += 1
+        self._service_class.before_response_headers()
+        return True
 
     def _send_headers(self):
-        for header, line in self._request_context["response_headers"].items():
-            self._buffer += '%s: %s\r\n' % (header, line)
-        self._buffer += '\r\n'
-        super(HttpServer, self).write()
-        self._state += 1
+        if self._set_headers():
+            self._service_class.before_response_content()
+            return True
+        else:
+            self._service_class.before_response_content()
+            return False
 
     def _send_content(self):
-        self._buffer += self._request_context["response"]
-        super(HttpServer, self).write()
-        self._state += 1
+        content = None
+        content = self._service_class.response()
+        if content is None:
+            self._service_class.before_terminate()
+            self._reset()
+            return True
+        else:
+            self._buffer += content
+            return False
+
+    def event(self):
+        event = events.BaseEvents.POLLERR
+        if (
+            self._state == constants.ACTIVE and
+            not self.full_buffer()
+        ):
+            event |= events.BaseEvents.POLLIN
+        if self._buffer:
+            event |= events.BaseEvents.POLLOUT
+        return event
+
+    def _reset(self):
+        self.request_context = {
+            "uri": "",
+            "parse": "",
+            "code": 200,
+            "status": "OK",
+            "request_headers": {},
+            "response_headers": {},
+            "response": "",
+        }
+        self._buffer = ""
+        self._service_class = None
 
     def _http_request(self):
         req = self._recv_line()
         if not req:
-            return False, None
+            return False
 
         req_comps = req.split(" ", 2)
         if len(req_comps) != 3:
@@ -181,25 +220,44 @@ class HttpServer(BaseSocket):
         if not uri or uri[0] != '/':
             raise RuntimeError("Invalid URI")
 
-        return True, req_comps
+        self.request_context["uri"] = uri
+        self.request_context["parse"] = urlparse.urlparse(uri)
 
-    def _send_error_message(
-        self,
-        code,
-        status,
-        type,
-        error,
-    ):
-        self._request_context["code"] = code
-        self._request_context["status"] = status
-        self._request_context["response_headers"]["Content-Type"] = type
-        self._request_context[
-            "response_headers"
-        ]["Content-Length"] = len(error)
-        self._request_context[
-            "response_headers"
-        ]["Error"] = "%d %s" % (code, status)
-        self._request_context["response"] = error
+        return True
+
+    def _get_headers(self):
+        finished = False
+        for i in range(constants.MAX_NUMBER_OF_HEADERS):
+            line = self._recv_line()
+            if line is None:
+                break
+            if line == "":
+                finished = True
+                break
+            line = self._parse_header(line)
+            if line[0] in self.request_context["request_headers"]:
+                self.request_context["request_headers"][line[0]] = line[1]
+        else:
+            raise RuntimeError("Exceeded max number of headers")
+        return finished
+
+    def _get_content(self):
+        if "content_length" in self.request_context:
+            content = self._buffer[:min(
+                self.request_context["content_length"],
+                self._max_buffer_size - len(self.request_context["content"]),
+            )]
+            self.request_context["content"] += content
+            self.request_context["content_length"] -= len(content)
+            self._buffer = self._buffer[len(content):]
+
+    def _set_headers(self):
+        for key, value in self.request_context["response_headers"].iteritems():
+            self._buffer += (
+                "%s: %s\r\n" % (key, value)
+            )
+        self._buffer += ("\r\n")
+        return True
 
     def _recv_line(self):
         n = self._buffer.find(constants.CRLF_BIN)
@@ -211,14 +269,9 @@ class HttpServer(BaseSocket):
         self._buffer = self._buffer[n + len(constants.CRLF_BIN):]
         return line
 
-    def _reset(self):
-        self._request_context["code"] = 200
-        self._request_context["status"] = "OK"
-        self._request_context["headers"] = {}
-        self._request_context["response_headers"] = {}
-        self._request_context["content"] = ""
-        self._request_context["response"] = ""
-
-        self._service = {}
-        self._service_class = None
-        self._state = constants.RECV_STATUS
+    def _parse_header(self, line):
+        SEP = ':'
+        n = line.find(SEP)
+        if n == -1:
+            raise RuntimeError('Invalid header received')
+        return line[:n].rstrip(), line[n + len(SEP):].lstrip()

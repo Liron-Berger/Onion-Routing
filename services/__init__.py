@@ -1,5 +1,5 @@
 from baseService import BaseService
-from getFileService import GetFileService
+from fileService import FileService
 from clockService import ClockService
 from mulService import MulService
 from counterService import CounterService
@@ -11,7 +11,7 @@ from disconnectService import DisconnectService
 
 __all__ = [
     "baseService",
-    "getFileService",
+    "fileService",
     "clockService",
     "mulService",
     "counterService",

@@ -20,7 +20,6 @@ class Socks5StatisticsService(BaseService):
         application_context,
         parse,
     ):
-        print "statistics!!!!!!!!!"
         super(Socks5StatisticsService, self).__init__(
             request_context,
             application_context,
