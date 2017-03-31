@@ -8,16 +8,6 @@ from baseService import BaseService
 class ClockService(BaseService):
     NAME = "/clock"
 
-    def __init__(
-        self,
-        request_context,
-        application_context,
-    ):
-        super(ClockService, self).__init__(
-            request_context,
-            application_context,
-        )
-
     def before_response_headers(self):
         message = util.text_to_html(
             time.strftime("%H:%M:%S", time.localtime())

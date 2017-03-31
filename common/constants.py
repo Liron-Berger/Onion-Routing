@@ -1,13 +1,13 @@
 #!/usr/bin/python
 
-""" proxy """
+MAX_BUFFER_SIZE = 1024
+
 PROXY_STATES = (
     ACTIVE,
     LISTEN,
     CLOSING,
 ) = range(3)
 
-""" Socks5 server """
 SOCKS5_STATES = (
     RECV_GREETING,
     SEND_GREETING,
@@ -16,10 +16,25 @@ SOCKS5_STATES = (
     PARTNER_STATE,
 ) = range(5)
 
+HTTP_STATES = (
+    RECV_STATUS,
+    RECV_HEADERS,
+    RECV_CONTENT,
+    SEND_STATUS,
+    SEND_HEADERS,
+    SEND_CONTENT,
+) = range(6)
+
+
 SOCKS5_VERSION = 0x05
-RESERVED = 0x00
+SOCKS5_RESERVED = 0x00
+
 SUPPORTED_METHODS = (
+    NO_AUTH,
+    NO_ACCEPTABLE_METHODS,
+) = (
     0x00,
+    0xff,
 )
 COMMANDS = (
     CONNECT,
@@ -31,7 +46,6 @@ ADDRESS_TYPE = (
 ) = (
     0x01,
 )
-
 REPLY_STATUS = (
     SUCCESS,
     GENERAL_SERVER_FAILURE,
@@ -40,95 +54,22 @@ REPLY_STATUS = (
     0x01,
 )
 
-""" Http """
-
-
-
-
-
-MAX_BUFFER_SIZE = 1024
-MAX_LISTENER_CONNECTIONS = 10
-POLL_TIMEOUT = 10000
-
-""" SOCKS 5 CONSTANTS """
-
-VERSION = 0x05
-RESERVED = 0x00
-
-""" SOCKS 5 METHODS """
-NO_AUTHENTICATION_REQUIRED = 0x00
-GSSAPI = 0x01
-USERNAME_PASSWORD = 0x02
-IANA_ASSIGNED = range(0x03, 0x7F)
-PRIVATE_METHODS = range(0x80, 0xFE)
-NO_ACCEPTABLE_METHODS = 0xFF
-
-SUPPORTED_METHODS = (
-    NO_AUTHENTICATION_REQUIRED,
-)
-
-""" SOCKS 5 REPLY STATUS """
-SUCCESS = 0x00
-GENERAL_SERVER_FAILURE = 0x01
-CONNECTION_RULESET_FAILURE = 0x02
-NETWORK_UNREACHABLE = 0x03
-HOST_UNREACHABLE = 0x04
-CONNECTION_REFUSED = 0x05
-TTL_EXPIRED = 0x06
-UNSUPPORTED_COMMAND = 0x07
-UNSUPPORTED_ADDRESS_TYPE = 0x08
-
-""" SOCKS 5 COMMANDS """
-CONNECT = 0x01
-BIND = 0x02
-UDP_ASSOCIATE = 0x03
-
-SUPPORTED_COMMANDS = (
-    CONNECT,
-)
-
-""" SOCKS 5 ADDRESS TYPE """
-IP_4 = 0x01
-DOMAINNAME = 0x03
-IP_6 = 0x04
-
-SUPPORTED_ADDRESS_TYPE = (
-    IP_4,
-)
-
-
-(
-    PROXY_ACTIVE,
-    PROXY_LISTEN,
-    PROXY_CLOSING,
-) = range(3)
-
-""" HTTP CONSTANTS """
-(
-    RECV_STATUS,
-    RECV_HEADERS,
-    RECV_CONTENT,
-    SEND_STATUS,
-    SEND_HEADERS,
-    SEND_CONTENT,
-) = range(6)
-
 HTTP_SIGNATURE = "HTTP/1.1"
 CRLF = "\r\n"
 CRLF_BIN = CRLF.encode("utf-8")
 MAX_NUMBER_OF_HEADERS = 100
 CONTENT_TYPE = "Content-Type"
 CONTENT_LENGTH = "Content-Length"
+INTERNAL_ERROR = "Internal Error"
+AUTHORIZATION = "Authorization"
+UNATHORIZED = "Unathorized"
+
 HEADERS = {
     "Cache-Control": "no-cache, no-store, must-revalidate", 
     "Pragma": "no-cache", 
     "Expires": "0", 
     "WWW-Authenticate": "Basic realm=\"myRealm\"" 
 }
-
-MAX_HEADER_LENGTH = 4096
-MAX_NUMBER_OF_HEADERS = 100
-
 MIME_MAPPING = {
     'html': 'text/html',
     'png': 'image/png',

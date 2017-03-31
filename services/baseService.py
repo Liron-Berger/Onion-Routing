@@ -31,8 +31,8 @@ class BaseService(object):
     def before_response_headers(self):
         if constants.CONTENT_LENGTH not in self._request_context["response_headers"]:
             self._request_context["response_headers"][constants.CONTENT_LENGTH] = len(
-                    self._request_context["response"]
-                )
+                self._request_context["response"]
+            )
 
     def before_response_content(self):
         pass
@@ -45,3 +45,8 @@ class BaseService(object):
 
     def before_terminate(self):
         pass
+
+    def wanted_headers(self):
+        return {
+            constants.CONTENT_LENGTH,
+        }

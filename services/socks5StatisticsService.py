@@ -14,22 +14,11 @@ from baseService import BaseService
 class Socks5StatisticsService(BaseService):
     NAME = "/statistics"
 
-    def __init__(
-        self,
-        request_context,
-        application_context,
-        parse,
-    ):
-        super(Socks5StatisticsService, self).__init__(
-            request_context,
-            application_context,
-            parse,
+    def before_response_headers(self):
+        self._request_context["response"] = util.text_to_html(
+            self._create_table(),
         )
-
-    def _content(
-        self,
-    ):
-        self._request_context["response"] = self._create_table()
+        super(Socks5StatisticsService, self).before_response_headers()
 
     def _create_table(
         self,
@@ -42,7 +31,7 @@ class Socks5StatisticsService(BaseService):
             "Socket Type",
             "Socket File Descriptor",
             "Bytes",
-            "Disconnect",
+            "",
         )
         connection_num = 1
         for sock in self._application_context["connections"]:
@@ -74,5 +63,5 @@ class Socks5StatisticsService(BaseService):
             <input type="submit" value="Disconnect">
         </form>
         ''' % (
-            sock.socket.fileno(),
+            sock.fileno(),
         )

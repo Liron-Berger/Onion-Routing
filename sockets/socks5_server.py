@@ -260,7 +260,7 @@ class Socks5Server(BaseSocket):
         )
         if (
             version == constants.SOCKS5_VERSION and
-            reserved == constants.RESERVED and 
+            reserved == constants.SOCKS5_RESERVED and 
             command in constants.COMMANDS and
             address_type == constants.IP_4
         ):
@@ -416,3 +416,6 @@ class Socks5Server(BaseSocket):
 
         del self._application_context["connections"][self]
         super(Socks5Server, self).close()
+
+    def fileno(self):
+        return self._socket.fileno()

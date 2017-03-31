@@ -36,9 +36,6 @@ class FileService(BaseService):
                 )
             self._request_context["fd"] = fd
         except Exception as e:
-            print e
-            import sys
-            sys.exit(0)
             raise util.HTTPError(500, "Internal Error", str(e))
 
     def response(self):

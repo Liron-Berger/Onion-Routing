@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import errno
+import logging
 import urlparse
 import socket
 
@@ -84,28 +85,24 @@ class HttpServer(BaseSocket):
                 raise
         if not self._buffer:
             raise util.DisconnectError()
-        self.on_receive()
-
-    def on_receive(self):
         try:
-            while self._state_machine[self._machine_state]["method"]():
-                self._machine_state = self._state_machine[
-                    self._machine_state
-                ]["next"]
+            while self._machine_state <= constants.RECV_CONTENT:
+                if self._state_machine[self._machine_state]["method"]():
+                    self._machine_state = self._state_machine[
+                        self._machine_state
+                    ]["next"]
         except util.HTTPError as e:
-            self.request_context["code"] = e.code
-            self.request_context["status"] = e.status
-            self.request_context["response"] = e.message
-            self.request_context[
-                "response_headers"
-            ]["Content-Length"] = len(self.request_context["response"])
-            self.request_context[
-                "response_headers"
-            ]["Content-Type"] = "text/plain"
-            self._service_class = BaseService(
-                self.request_context,
-                self._application_context,
-            )
+            self._http_error(e)
+
+    def write(self):
+        try:
+            while self._machine_state >= constants.SEND_STATUS and self._machine_state <= constants.SEND_CONTENT:
+                if self._state_machine[self._machine_state]["method"]():
+                    self._machine_state = self._state_machine[
+                        self._machine_state
+                    ]["next"]
+        except util.HTTPError as e:
+            self._http_error(e)
 
     def _recv_status(self):
         if not self._http_request():
@@ -119,14 +116,14 @@ class HttpServer(BaseSocket):
                 self.request_context,
                 self._application_context,
             )
+            logging.info("service %s was requested" % (self._service_class.NAME))
         except KeyError:
             raise util.HTTPError(
                 code=500,
                 status="Internal Error",
                 message="service not supported",
             )
-        finally:
-            self._service_class.before_request_headers()
+        self._service_class.before_request_headers()
         return True
 
     def _recv_headers(self):
@@ -175,16 +172,23 @@ class HttpServer(BaseSocket):
             return True
         else:
             self._buffer += content
+            while self._buffer:
+                self._buffer = self._buffer[
+                    self._socket.send(
+                        self._buffer
+                    ):
+                ]
             return False
 
     def event(self):
         event = events.BaseEvents.POLLERR
         if (
             self._state == constants.ACTIVE and
-            not self.full_buffer()
+            not self.full_buffer() and
+            self._machine_state <= constants.RECV_CONTENT
         ):
             event |= events.BaseEvents.POLLIN
-        if self._buffer:
+        if self._machine_state >= constants.SEND_STATUS and self._machine_state <= constants.SEND_CONTENT:
             event |= events.BaseEvents.POLLOUT
         return event
 
@@ -235,7 +239,7 @@ class HttpServer(BaseSocket):
                 finished = True
                 break
             line = self._parse_header(line)
-            if line[0] in self.request_context["request_headers"]:
+            if line[0] in self._service_class.wanted_headers():
                 self.request_context["request_headers"][line[0]] = line[1]
         else:
             raise RuntimeError("Exceeded max number of headers")
@@ -275,3 +279,18 @@ class HttpServer(BaseSocket):
         if n == -1:
             raise RuntimeError('Invalid header received')
         return line[:n].rstrip(), line[n + len(SEP):].lstrip()
+
+    def _http_error(self, e):
+        self.request_context["code"] = e.code
+        self.request_context["status"] = e.status
+        self.request_context["response"] = e.message
+        self.request_context[
+            "response_headers"
+        ]["Content-Length"] = len(self.request_context["response"])
+        self.request_context[
+            "response_headers"
+        ]["Content-Type"] = "text/plain"
+        self._service_class = BaseService(
+            self.request_context,
+            self._application_context,
+        )
