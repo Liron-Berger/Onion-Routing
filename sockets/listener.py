@@ -37,16 +37,15 @@ class Listener(pollable.Pollable):
         self,
         socket,
         state,
-        listener_type,
         bind_address,
         bind_port,
-        max_connections,
         application_context,
+        listener_type=None,
     ):
         self._socket = socket
         self._socket.setblocking(False)
         self._socket.bind((bind_address, bind_port))
-        self._socket.listen(max_connections)
+        self._socket.listen(application_context["max_connections"])
 
         self._state = state
         self._listener_type = listener_type
@@ -54,6 +53,13 @@ class Listener(pollable.Pollable):
 
         self._bind_address = bind_address
         self._bind_port = bind_port
+
+    def __repr__(self):
+        return "Listener object of type %s. address %s, port %s" % (
+            self._listener_type,
+            self._bind_address,
+            self._bind_port,
+        )
 
     def read(self):
         """read() -> accept new connection.
@@ -77,13 +83,13 @@ class Listener(pollable.Pollable):
             )
 
             self._application_context["socket_data"][
-                server.socket.fileno()
+                server.fileno()
             ] = server
 
         except Exception:
             logging.error(traceback.format_exc())
             if server:
-                server.socket.close()
+                server.close()
 
     def event(self):
         """event() -> returns the needed async event to async proxy.

@@ -1,19 +1,19 @@
 #!/usr/bin/python
 
 import logging
+import random
+import socket
 import traceback
 
-from base_socket import BaseSocket
-from socks5_node import Socks5Node
-from common import constants
-from async import events
-from async import pollable
-import socket
-from socks5_first_node import Socks5FirstNode
-from socks5_server import Socks5Server
-import random
+import base_socket
+import listener
+import socks5_first_node
+import socks5_server
 
-class Node(pollable.Pollable):
+from common import constants
+
+
+class Node(listener.Listener):
 
     def __init__(
         self,
@@ -21,77 +21,93 @@ class Node(pollable.Pollable):
         state,
         bind_address,
         bind_port,
-        max_connections,
         application_context,
         is_first=False,
     ):
-        self._socket = socket
-        self._socket.setblocking(False)
-        self._socket.bind((bind_address, bind_port))
-        self._socket.listen(max_connections)
+        super(Node, self).__init__(
+            socket,
+            state,
+            bind_address,
+            bind_port,
+            application_context,
+            listener_type=socks5_server.Socks5Server,
+        )
 
-        self._state = state
-        self._application_context = application_context
-
-        self._bind_address = bind_address
-        self._bind_port = bind_port
         self._is_first = is_first
-
         self._key = random.randint(0, 256)
 
-    def read(self):
-        try:
-            server = None
-            if self._is_first:
-                self._first_node()
-            else:
-                s, addr = self._socket.accept()
-
-                server = Socks5Server(
-                    s,
-                    constants.ACTIVE,
-                    self._application_context,
-                    self._bind_address,
-                    self._bind_port,
-                )
-
-                self._application_context["socket_data"][
-                    server.socket.fileno()
-                ] = server
-
-        except Exception:
-            logging.error(traceback.format_exc())
-            if server:
-                server.socket.close()
-
-    def _first_node(self):
-        client_proxy = None
-
-        s, addr = self._socket.accept()
-
-        client_proxy = BaseSocket(
-            s,
-            constants.ACTIVE,
-            self._application_context,
+    def __repr__(self):
+        return "Node object. address %s, port %s" % (
             self._bind_address,
             self._bind_port,
         )
 
-        socks5_node = Socks5FirstNode(
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-            constants.ACTIVE,
-            self._application_context,
-            client_proxy,
-            path=self._find_nodes(),
-            bind_address=self._bind_address,
-            bind_port=self._bind_port,
-        )
+    def read(self):
+        if not self._is_first:
+            self._regular_node()
+        else:
+            self._first_node()
 
-        client_proxy.partner = socks5_node
+    def _regular_node(self):
+        try:
+            server = None
 
-        self._application_context["socket_data"][
-            socks5_node.fileno()
-        ] = socks5_node
+            s, addr = self._socket.accept()
+
+            server = self._listener_type(
+                s,
+                constants.ACTIVE,
+                self._application_context,
+                self._bind_address,
+                self._bind_port,
+                self._key,
+            )
+
+            self._application_context["socket_data"][
+                server.fileno()
+            ] = server
+
+        except Exception:
+            logging.error(traceback.format_exc())
+            if server:
+                server.close()
+
+    def _first_node(self):
+        try:
+            client_proxy = None
+            socks5_node = None
+
+            s, addr = self._socket.accept()
+
+            client_proxy = base_socket.BaseSocket(
+                s,
+                constants.ACTIVE,
+                self._application_context,
+                self._bind_address,
+                self._bind_port,
+            )
+
+            socks5_node = socks5_first_node.Socks5FirstNode(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+                constants.ACTIVE,
+                self._application_context,
+                client_proxy,
+                path=self._find_nodes(),
+                bind_address=self._bind_address,
+                bind_port=self._bind_port,
+            )
+
+            client_proxy.partner = socks5_node
+
+            self._application_context["socket_data"][
+                socks5_node.fileno()
+            ] = socks5_node
+        except Exception:
+            logging.error(traceback.format_exc())
+            if client_proxy:
+                client_proxy.close()
+            if socks5_node:
+                socks5_node.close()
 
     def _find_nodes(self):
         path = {}
@@ -104,11 +120,6 @@ class Node(pollable.Pollable):
                 available_nodes.append(name)
             else:
                 path[str(counter)] = name
-                # path[str(counter)] = [
-                    # name,
-                    # self._application_context["registry"][name]["address"],
-                    # self._application_context["registry"][name]["port"],
-                # ]
                 counter += 1
 
         if not available_nodes:
@@ -128,43 +139,9 @@ class Node(pollable.Pollable):
 
         for name in chosen_nodes:
             path[str(counter)] = name
-            # path[str(counter)] = [
-                # self._application_context["registry"][name]["address"],
-                # self._application_context["registry"][name]["port"],
-            # ]
             counter += 1
+
         return path
-
-    def event(self):
-        event = events.BaseEvents.POLLERR
-        if self._state == constants.LISTEN:
-            event |= events.BaseEvents.POLLIN
-        return event
-
-    def fileno(self):
-        return self._socket.fileno()
-
-    def close(self):
-        self._socket.close()
-
-    def remove(self):
-        return self._state == constants.CLOSING
-
-    @property
-    def socket(self):
-        return self._socket
-
-    @socket.setter
-    def socket(self, socket):
-        self._socket = socket
-
-    @property
-    def state(self):
-        return self._state
-
-    @state.setter
-    def state(self, state):
-        self._state = state
 
     @property
     def key(self):

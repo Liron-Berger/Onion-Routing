@@ -40,9 +40,14 @@ class BaseSocket(pollable.Pollable):
 
         self._socket.setblocking(False)
 
-
         self._bind_address = bind_address
         self._bind_port = bind_port
+
+    def __repr__(self):
+        return "BaseSocket object. address %s, port %s" % (
+            self._bind_address,
+            self._bind_port,
+        )
 
     def read(self):
         """read() -> reciving data from partner.

@@ -44,6 +44,12 @@ class HttpServer(BaseSocket):
 
         self._reset()
 
+    def __repr__(self):
+        return "HttpServer object. address %s, port %s" % (
+            self._bind_address,
+            self._bind_port,
+        )
+
     def _create_state_machine(
         self,
     ):

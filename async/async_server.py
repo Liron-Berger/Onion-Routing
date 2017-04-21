@@ -40,17 +40,20 @@ class AsyncServer(object):
         self,
         entry,
     ):
-        logging.debug(
-            "closing socket - fd: %d closed, fd: %s %s" % (
-                entry.fileno(),
-                entry.partner.fileno() if entry.partner else "",
-                "closed" if entry.partner else "parter is None"
-            ),
-        )
-        entry.state = constants.CLOSING
-        if entry.partner is not None:
-            entry.partner.state = constants.CLOSING
-        entry.buffer = ""
+        if entry.state == constants.LISTEN:
+            entry.state = constants.CLOSING
+        else:
+            logging.debug(
+                "closing socket - fd: %d closed, fd: %s %s" % (
+                    entry.fileno(),
+                    entry.partner.fileno() if entry.partner else "",
+                    "closed" if entry.partner else "parter is None"
+                ),
+            )
+            entry.state = constants.CLOSING
+            if entry.partner is not None:
+                entry.partner.state = constants.CLOSING
+            entry.buffer = ""
 
     def _remove_socket(
         self,
@@ -58,10 +61,10 @@ class AsyncServer(object):
     ):
         logging.debug(
             "socket fd: %d removed from socket_data" % (
-                entry.socket.fileno(),
+                entry.fileno(),
             ),
         )
-        del self._socket_data[entry.socket.fileno()]
+        del self._socket_data[entry.fileno()]
         entry.close()
 
     def _terminate(self):
@@ -84,11 +87,10 @@ class AsyncServer(object):
         self._socket_data[s.fileno()] = sockets.Listener(
             s,
             constants.LISTEN,
-            listener_type,
             bind_address,
             bind_port,
-            self._max_connections,
             self._application_context,
+            listener_type,
         )
         logging.info(
             "New listener added: %s:%s. type: %s." % (
@@ -111,7 +113,6 @@ class AsyncServer(object):
             constants.LISTEN,
             bind_address,
             bind_port,
-            self._max_connections,
             self._application_context,
             is_first,
         )
@@ -123,13 +124,10 @@ class AsyncServer(object):
             "node": node,
         }
         logging.info(
-            "New node added: %s:%s." % (
-                bind_address,
-                bind_port,
+            "New node added: %s" % (
+                node,
             )
         )
-        return self._socket_data[s.fileno()]
-
 
     def run(self):
         while self._socket_data:
@@ -145,11 +143,10 @@ class AsyncServer(object):
                         self._poll_timeout,
                     ):
                         logging.debug(
-                            "event: %d, socket fd: %d. on: %s:%s" % (
+                            "event: %d, socket fd: %d. %s" % (
                                 event,
                                 fd,
-                                self._socket_data[fd]._bind_address,
-                                self._socket_data[fd]._bind_port,
+                                entry,
                             ),
                         )
                         entry = self._socket_data[fd]

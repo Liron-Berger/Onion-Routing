@@ -7,6 +7,7 @@ import traceback
 
 from common import constants
 from common import util
+from common import socks5_util
 
 from base_socket import BaseSocket
 from async import events
@@ -38,7 +39,6 @@ class Socks5FirstNode(BaseSocket):
         self._machine_current_state = constants.CLIENT_SEND_GREETING
         self._state_machine = self._create_state_machine()
 
-        self._command_map = self._create_command_map()
         self._request_context = {}
 
         self._start_byte_counter()
@@ -57,6 +57,12 @@ class Socks5FirstNode(BaseSocket):
                 raise
 
         self._connected_nodes = 2
+
+    def __repr__(self):
+        return "First node in onion chain. address %s, port %s" % (
+            self._bind_address,
+            self._bind_port,
+        )
 
     def _create_state_machine(self):
         return {
@@ -83,11 +89,12 @@ class Socks5FirstNode(BaseSocket):
         }
 
     def _client_send_greeting(self):
-        self._buffer = "%s%s%s" % (
-            chr(0x05),
-            chr(0x01),
-            chr(0x00),
+        self._buffer = socks5_util.GreetingRequest.encode(
+            constants.SOCKS5_VERSION,
+            len(constants.SUPPORTED_METHODS),
+            constants.SUPPORTED_METHODS,
         )
+        
         super(Socks5FirstNode, self).write()
 
         self._machine_current_state = self._state_machine[
@@ -95,28 +102,29 @@ class Socks5FirstNode(BaseSocket):
         ]["next"]
 
     def _client_recv_greeting(self):
-        self._buffer = ""
-        self._machine_current_state = self._state_machine[
-            self._machine_current_state
-        ]["next"]
+        response = socks5_util.GreetingResponse.decode(self._buffer)
+        if (
+            response["version"] != constants.SOCKS5_VERSION or
+            response["method"] == constants.NO_ACCEPTABLE_METHODS
+        ):
+            self._state = constants.CLOSING
+        else:
+            self._buffer = ""
+            self._machine_current_state = self._state_machine[
+                self._machine_current_state
+            ]["next"]
 
     def _client_send_connection_request(self):
         address = self._application_context["registry"][self._path[str(self._connected_nodes + 1)]]["address"]
         port = self._application_context["registry"][self._path[str(self._connected_nodes + 1)]]["port"]
 
-        self._buffer = "%s%s%s%s%s%s" % (
-            chr(constants.SOCKS5_VERSION),
-            chr(constants.CONNECT),
-            chr(constants.SOCKS5_RESERVED),
-            chr(constants.IP_4),
-            ''.join(
-                chr(int(x))
-                for x in address.split('.')
-            ),
-            (
-                chr(port / 256) +
-                chr(port % 256)
-            ),
+        self._buffer = socks5_util.Socks5Request.encode(
+            constants.SOCKS5_VERSION,
+            constants.CONNECT,
+            constants.SOCKS5_RESERVED,
+            constants.IP_4,
+            address,
+            port,
         )
         super(Socks5FirstNode, self).write()
 
@@ -125,240 +133,35 @@ class Socks5FirstNode(BaseSocket):
         ]["next"]
 
     def _client_recv_connection_request(self):
-        self._buffer = ""
-
-        self._connected_nodes += 1
-        if self._connected_nodes == 4:
-            self._partner = self._client_proxy
-
-            self._application_context["socket_data"][
-                self._client_proxy.fileno()
-            ] = self._client_proxy
-
-            self._machine_current_state = self._state_machine[
-                self._machine_current_state
-            ]["next"]
+        response = socks5_util.Socks5Response.decode(self._buffer)
+        if not (
+            response["version"] == constants.SOCKS5_VERSION and
+            response["reply"] == constants.SUCCESS and
+            response["reserved"] == constants.SOCKS5_RESERVED and
+            response["address_type"] in constants.ADDRESS_TYPE
+        ):
+            self._state = constants.CLOSING
         else:
-            self._machine_current_state = constants.CLIENT_SEND_GREETING
+            self._buffer = ""
 
-    def _create_command_map(self):
-        return {
-            constants.CONNECT: self._connect_command,
-        }
+            self._connected_nodes += 1
+            if self._connected_nodes == 4:
+                self._partner = self._client_proxy
 
-    def _recv_greeting(self):
-        if not self._request_context:
-            self._get_socks5_greeting()
+                self._application_context["socket_data"][
+                    self._client_proxy.fileno()
+                ] = self._client_proxy
 
-        method = constants.NO_ACCEPTABLE_METHODS
-        for m in self._request_context["methods"]:
-            if m in constants.SUPPORTED_METHODS:
-                method = m
-                break
-
-        self._buffer = "%s%s" % (
-            chr(self._request_context["version"]),
-            chr(method),
-        )
-        self._machine_current_state = self._state_machine[
-            self._machine_current_state
-        ]["next"]
-
-    def _send_greeting(self):
-        super(Socks5FirstNode, self).write()
-        self._request_context = {}
-        self._machine_current_state = self._state_machine[
-            self._machine_current_state
-        ]["next"]
-
-    def _recv_connection_request(self):
-        if not self._request_context:
-            self._get_socks5_connection_request()
-        reply = self._command_map[self._request_context["command"]]()
-
-        self._buffer = "%s%s%s%s%s%s" % (
-            chr(self._request_context["version"]),
-            chr(reply),
-            chr(self._request_context["reserved"]),
-            chr(self._request_context["address_type"]),
-            ''.join(
-                chr(int(x))
-                for x in self._request_context["address"].split('.')
-            ),
-            (
-                chr(self._request_context["port"] / 256) +
-                chr(self._request_context["port"] % 256)
-            ),
-        )
-        self._machine_current_state = self._state_machine[
-            self._machine_current_state
-        ]["next"]
-
-    def _send_connection_request(self):
-        super(Socks5FirstNode, self).write()
-        self._request_context = {}
-        self._machine_current_state = self._state_machine[
-            self._machine_current_state
-        ]["next"]
+                self._machine_current_state = self._state_machine[
+                    self._machine_current_state
+                ]["next"]
+            else:
+                self._machine_current_state = constants.CLIENT_SEND_GREETING
 
     def _partner_state(self):
         super(Socks5FirstNode, self).write()
 
-    def _get_socks5_greeting(self):
-        """_get_socks5_greeting() -> fills request_context with
-        the client's greeting.
-
-        checks whether the whole message from client was recieved,
-        and then checks whether it's a valid greeting.
-        raises an error in case of wrong recieved arguments.
-        """
-
-        if len(self._buffer) < 3:
-            return
-        data = [ord(a) for a in self._buffer]
-        (
-            version,
-            number_methods,
-            methods,
-        ) = (
-            data[0],
-            data[1],
-            data[2:],
-        )
-
-        if version == constants.SOCKS5_VERSION:
-            if len(methods) < number_methods:
-                return
-            elif len(methods) > number_methods:
-                raise util.Socks5Error()
-            self._request_context = {
-                "version": version,
-                "number_methods": number_methods,
-                "methods": methods,
-            }
-        else:
-            raise util.Socks5Error()
-
-    def _get_socks5_connection_request(self):
-        """_get_socks5_connection_request() -> fills request_context with
-        the client's request.
-
-        checks whether the whole message from client was recieved,
-        and then checks whether it's a valid request.
-        raises an error in case of wrong recieved arguments.
-        """
-
-        if len(self._buffer) < 4:
-            return
-        data = [ord(a) for a in self._buffer]
-        (
-            version,
-            command,
-            reserved,
-            address_type,
-        ) = (
-            data[0],
-            data[1],
-            data[2],
-            data[3],
-        )
-        if (
-            version == constants.SOCKS5_VERSION and
-            reserved == constants.SOCKS5_RESERVED and 
-            command in constants.COMMANDS and
-            address_type == constants.IP_4
-        ):
-            if len(data[4:]) < 6:
-                return
-            address, port = (
-                '.'.join(str(n) for n in data[4:len(data)-2]),
-                256*data[-2] + data[-1],
-            )
-            if not util.validate_ip(address):
-                raise util.Socks5Error()
-            self._request_context = {
-                "version": version,
-                "command": command,
-                "reserved": reserved,
-                "address_type": address_type,
-                "address": address,
-                "port": port,
-            }
-        else:
-            raise util.Socks5Error()
-
-    def _connect_command(self):
-        """_connect_command() -> connect command for the client's request.
-
-        if connect is received from client, tries to connect
-        to the given (address, port).
-        returns socks5 status of connect - success/failure.
-        """
-
-        reply = constants.SUCCESS
-        try:
-            self._connect(
-                self._request_context["address"],
-                self._request_context["port"],
-            )
-            self._application_context["connections"][
-                self
-            ]["out"] = {
-                "bytes": 0,
-                "fd": self._partner.fileno(),
-            }
-        except Exception:
-            logging.error(traceback.format_exc())
-            reply = GENERAL_SERVER_FAILURE
-        return reply
-
-    def _connect(
-        self,
-        address,
-        port,
-    ):
-        logging.info(
-            "connecting to: %s %s" %
-            (
-                address,
-                port,
-            ),
-        )
-        try:
-            partner = BaseSocket(
-                socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-                constants.ACTIVE,
-                self._application_context,
-            )
-            try:
-                partner.socket.connect(
-                    (
-                        address,
-                        port,
-                    )
-                )
-            except socket.error as e:
-                if e.errno not in (errno.EINPROGRESS, errno.EWOULDBLOCK):
-                    raise
-            self._partner = partner
-            partner.partner = self
-            self._application_context[
-                "socket_data"
-            ][partner.fileno()] = partner
-        except Exception:
-            if partner:
-                partner.socket.close()
-            raise
-
     def _start_byte_counter(self):
-        """_start_byte_counter() -> adds a new key + value to the connections dict.
-
-        once server is started, there is an "in" state, when server is
-        communicating with client, and "out" state, when server is used as
-        a proxy.
-        for each state the number of bytes sent/recieved is saved.
-        """
-
         self._application_context["connections"][self] = {
             "in": {
                 "bytes": 0,
@@ -374,22 +177,12 @@ class Socks5FirstNode(BaseSocket):
         self,
         bytes,
     ):
-        """_update_byte_counter(bytes) -> decides on the type of the connection,
-        and adds the given length bytes to the right connection in application_context.
-        """
-
         type = "in"
         if self._partner != self:
             type = "out"
         self._application_context["connections"][self][type]["bytes"] += bytes
 
     def read(self):
-        """read() -> reciving data from partner.
-
-        recives data until disconnect or buffer is full.
-        data is stored in the partner's buffer.
-        """
-
         data = ""
         try:
             while not self._partner.full_buffer():
@@ -417,8 +210,6 @@ class Socks5FirstNode(BaseSocket):
             pass #self._http_error(e)
 
     def write(self):
-        """write() -> runs the current state in state machine."""
-
         if self._machine_current_state in (
             constants.CLIENT_SEND_GREETING,
             constants.CLIENT_SEND_CONNECTION_REQUEST,
@@ -429,10 +220,6 @@ class Socks5FirstNode(BaseSocket):
             self._state_machine[self._machine_current_state]["method"]()
 
     def close(self):
-        """close() -> deletes the connection from application_context
-        and closes the the server.
-        """
-
         del self._application_context["connections"][self]
         super(Socks5FirstNode, self).close()
 
@@ -440,7 +227,6 @@ class Socks5FirstNode(BaseSocket):
         return self._socket.fileno()
 
     def event(self):
-        #if self._is_first:
         event = events.BaseEvents.POLLERR
         if (
             self._state == constants.ACTIVE and

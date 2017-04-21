@@ -31,6 +31,7 @@ class Socks5Server(BaseSocket):
         application_context,
         bind_address,
         bind_port=9999,
+        key=0,
     ):
         super(Socks5Server, self).__init__(
             socket,
@@ -45,6 +46,14 @@ class Socks5Server(BaseSocket):
         self._request_context = {}
 
         self._start_byte_counter()
+
+        self._key = key
+
+    def __repr__(self):
+        return "Socks5Server object. address %s, port %s" % (
+            self._bind_address,
+            self._bind_port,
+        )
 
     def _create_state_machine(self):
         """_create_state_machine() -> returns a dict the states socks5 server is using.
