@@ -28,6 +28,8 @@ class BaseSocket(pollable.Pollable):
         socket,
         state,
         application_context,
+        bind_address,
+        bind_port,
     ):
         self._socket = socket
         self._state = state
@@ -37,6 +39,10 @@ class BaseSocket(pollable.Pollable):
         self._partner = self
 
         self._socket.setblocking(False)
+
+
+        self._bind_address = bind_address
+        self._bind_port = bind_port
 
     def read(self):
         """read() -> reciving data from partner.

@@ -52,6 +52,9 @@ class Listener(pollable.Pollable):
         self._listener_type = listener_type
         self._application_context = application_context
 
+        self._bind_address = bind_address
+        self._bind_port = bind_port
+
     def read(self):
         """read() -> accept new connection.
 
@@ -69,6 +72,8 @@ class Listener(pollable.Pollable):
                 s,
                 constants.ACTIVE,
                 self._application_context,
+                self._bind_address,
+                self._bind_port,
             )
 
             self._application_context["socket_data"][

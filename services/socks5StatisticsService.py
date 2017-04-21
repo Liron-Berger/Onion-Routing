@@ -16,14 +16,51 @@ class Socks5StatisticsService(BaseService):
 
     def before_response_headers(self):
         self._request_context["response"] = util.text_to_html(
+            self._register_form() +
+            self._unregister_form() +
             self._create_table(),
         )
         super(Socks5StatisticsService, self).before_response_headers()
 
+    def _register_form(
+        self,
+    ):
+        return '''
+        <form style="float:right" action="register">
+            Name:<br>
+            <input type="text" name="name">
+            <br>
+            Address:<br>
+            <input type="text" name="address">
+            <br>
+            Port:<br>
+            <input type="text" name="port">
+            <br><br>
+            <input type="submit" value="Register">
+        </form>
+        '''
+
+    def _unregister_form(
+        self,
+    ):
+        forms = ""
+        print self._application_context["registry"]
+        for node in self._application_context["registry"]:
+            forms += '''
+                <form style="float:right" action="unregister">
+                    <input type="hidden" name="name" value="%s" />
+                    <input type="submit" value="unregister: %s">
+                </form>
+            ''' % (
+                node,
+                node,
+            )
+        return forms
+
     def _create_table(
         self,
     ):
-        table = '''<table border="5" width="50%" cellpadding="4" cellspacing="3">'''
+        table = '''<table style="float:left" border="5" width="50%" cellpadding="4" cellspacing="3">'''
         table += '''<tr><th colspan="5"><br><h3> %s </h3></th></tr>''' % "Socks Statistics"
         table += '''<tr><th colspan="5"> Connections: %s </th></tr>''' % len(self._application_context["connections"])
         table += "<tr><th> %s </th><th> %s </th><th> %s </th><th> %s </th><th> %s </th></tr>" % (

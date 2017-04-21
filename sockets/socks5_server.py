@@ -29,11 +29,15 @@ class Socks5Server(BaseSocket):
         socket,
         state,
         application_context,
+        bind_address,
+        bind_port=9999,
     ):
         super(Socks5Server, self).__init__(
             socket,
             state,
             application_context,
+            bind_address,
+            bind_port,
         )
         self._machine_current_state = constants.RECV_GREETING
         self._state_machine = self._create_state_machine()
@@ -197,7 +201,7 @@ class Socks5Server(BaseSocket):
         for regular TCP communication between the client and the
         address + port he was connected to by this server.
         """
-
+        
         super(Socks5Server, self).write()
 
     def _get_socks5_greeting(self):
@@ -333,6 +337,8 @@ class Socks5Server(BaseSocket):
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM),
                 constants.ACTIVE,
                 self._application_context,
+                self._bind_address,
+                self._bind_port,
             )
             try:
                 partner.socket.connect(

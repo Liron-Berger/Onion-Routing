@@ -99,24 +99,18 @@ def main():
         application_context,
     )
 
-    for l in args.listener:
-        (
-            bind_address,
-            bind_port,
-            type,
-        ) = l.split(':')
-        logging.debug(
-            "new listener added: %s:%s. type: %s." % (
+    if args.listener:
+        for l in args.listener:
+            (
                 bind_address,
                 bind_port,
                 type,
+            ) = l.split(':')
+            proxy.add_listener(
+                listener_types[type],
+                bind_address,
+                int(bind_port),
             )
-        )
-        proxy.add_listener(
-            listener_types[type],
-            bind_address,
-            int(bind_port),
-        )
 
     logging.debug("starting proxy...")
     proxy.run()

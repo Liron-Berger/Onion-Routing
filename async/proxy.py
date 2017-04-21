@@ -10,7 +10,7 @@ from common import constants
 from common import util
 from events import BaseEvents
 from sockets import Listener
-
+from sockets import Node
 
 class Proxy(object):
 
@@ -28,6 +28,7 @@ class Proxy(object):
         self._application_context = application_context
 
         self._application_context["socket_data"] = self._socket_data
+        self._application_context["proxy"] = self
 
     def _create_poller(self):
         poller = self._poll_object()
@@ -80,6 +81,36 @@ class Proxy(object):
             self._max_connections,
             self._application_context,
         )
+        logging.info(
+            "new listener added: %s:%s. type: %s." % (
+                bind_address,
+                bind_port,
+                listener_type,
+            )
+        )
+
+    def add_node(
+        self,
+        bind_address,
+        bind_port,
+    ):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket_data[s.fileno()] = Node(
+            s,
+            constants.LISTEN,
+            bind_address,
+            bind_port,
+            self._max_connections,
+            self._application_context,
+        )
+        logging.info(
+            "new node added: %s:%s." % (
+                bind_address,
+                bind_port,
+            )
+        )
+        return self._socket_data[s.fileno()]
+
 
     def run(self):
         while self._socket_data:
@@ -95,9 +126,11 @@ class Proxy(object):
                         self._poll_timeout,
                     ):
                         logging.info(
-                            "event: %d, socket fd: %d" % (
+                            "event: %d, socket fd: %d. on: %s:%s" % (
                                 event,
                                 fd,
+                                self._socket_data[fd]._bind_address,
+                                self._socket_data[fd]._bind_port,
                             ),
                         )
                         entry = self._socket_data[fd]
@@ -142,3 +175,6 @@ class Proxy(object):
             except Exception as e:
                 logging.critical(traceback.format_exc())
                 self._terminate()
+
+                import sys
+                sys.exit()
