@@ -44,7 +44,6 @@ class Socks5StatisticsService(BaseService):
         self,
     ):
         forms = ""
-        print self._application_context["registry"]
         for node in self._application_context["registry"]:
             forms += '''
                 <form style="float:right" action="unregister">

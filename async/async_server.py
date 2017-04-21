@@ -6,15 +6,15 @@ import select
 import socket
 import traceback
 
+import sockets
+
 from common import constants
 from common import util
 from events import BaseEvents
-from sockets import Listener
-from sockets import Node
 
-class Proxy(object):
+class AsyncServer(object):
 
-    _close_proxy = False
+    _close_server = False
     _socket_data = {}
 
     def __init__(
@@ -24,11 +24,10 @@ class Proxy(object):
         self._poll_object = application_context["poll_object"]
         self._poll_timeout = application_context["poll_timeout"]
         self._max_connections = application_context["max_connections"]
-        self._max_buffer_size = application_context["max_buffer_size"]
         self._application_context = application_context
 
         self._application_context["socket_data"] = self._socket_data
-        self._application_context["proxy"] = self
+        self._application_context["async_server"] = self
 
     def _create_poller(self):
         poller = self._poll_object()
@@ -41,6 +40,13 @@ class Proxy(object):
         self,
         entry,
     ):
+        logging.debug(
+            "closing socket - fd: %d closed, fd: %s %s" % (
+                entry.fileno(),
+                entry.partner.fileno() if entry.partner else "",
+                "closed" if entry.partner else "parter is None"
+            ),
+        )
         entry.state = constants.CLOSING
         if entry.partner is not None:
             entry.partner.state = constants.CLOSING
@@ -50,8 +56,8 @@ class Proxy(object):
         self,
         entry,
     ):
-        logging.info(
-            "socket fd: %d closed" % (
+        logging.debug(
+            "socket fd: %d removed from socket_data" % (
                 entry.socket.fileno(),
             ),
         )
@@ -59,11 +65,14 @@ class Proxy(object):
         entry.close()
 
     def _terminate(self):
+        logging.info(
+            "Terminating the server"
+        )
         for entry in self._socket_data.values():
             entry.state = constants.CLOSING
 
-    def close_proxy(self):
-        self._close_proxy = True
+    def close_server(self):
+        self._close_server = True
 
     def add_listener(
         self,
@@ -72,7 +81,7 @@ class Proxy(object):
         bind_port,
     ):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket_data[s.fileno()] = Listener(
+        self._socket_data[s.fileno()] = sockets.Listener(
             s,
             constants.LISTEN,
             listener_type,
@@ -82,7 +91,7 @@ class Proxy(object):
             self._application_context,
         )
         logging.info(
-            "new listener added: %s:%s. type: %s." % (
+            "New listener added: %s:%s. type: %s." % (
                 bind_address,
                 bind_port,
                 listener_type,
@@ -91,20 +100,30 @@ class Proxy(object):
 
     def add_node(
         self,
+        name,
         bind_address,
         bind_port,
+        is_first=False,
     ):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket_data[s.fileno()] = Node(
+        node = sockets.Node(
             s,
             constants.LISTEN,
             bind_address,
             bind_port,
             self._max_connections,
             self._application_context,
+            is_first,
         )
+        self._socket_data[s.fileno()] = node
+        self._application_context["registry"][name] = {
+            "address": bind_address,
+            "port": bind_port,
+            "key": node.key,
+            "node": node,
+        }
         logging.info(
-            "new node added: %s:%s." % (
+            "New node added: %s:%s." % (
                 bind_address,
                 bind_port,
             )
@@ -115,7 +134,7 @@ class Proxy(object):
     def run(self):
         while self._socket_data:
             try:
-                if self._close_proxy:
+                if self._close_server:
                     self._terminate()
                 for fd in self._socket_data.keys()[:]:
                     entry = self._socket_data[fd]
@@ -125,7 +144,7 @@ class Proxy(object):
                     for fd, event in self._create_poller().poll(
                         self._poll_timeout,
                     ):
-                        logging.info(
+                        logging.debug(
                             "event: %d, socket fd: %d. on: %s:%s" % (
                                 event,
                                 fd,
@@ -175,6 +194,3 @@ class Proxy(object):
             except Exception as e:
                 logging.critical(traceback.format_exc())
                 self._terminate()
-
-                import sys
-                sys.exit()

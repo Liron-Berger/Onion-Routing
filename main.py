@@ -10,10 +10,6 @@ import sockets
 from common import util
 
 
-listener_types = {
-    "socks5": sockets.Socks5Server,
-    "http": sockets.HttpServer,
-}
 poll_events = util.registry_by_name(
     async.BaseEvents,
 )
@@ -22,12 +18,39 @@ poll_events = util.registry_by_name(
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--listener",
+        "--http-listener-address",
+        default="0.0.0.0",
+        help="http server bind address"
+    )
+    parser.add_argument(
+        "--http-listener-port",
+        default=8080,
+        type=int,
+        help="http server bind port"
+    )
+    parser.add_argument(
+        "--socks5-first-node-address",
+        default="0.0.0.0",
+        help="address of the first node in all onion chains",
+    )
+    parser.add_argument(
+        "--socks5-first-node-port",
+        default=1080,
+        type=int,
+        help="port of the first node in all onion chains",
+    )
+    parser.add_argument(
+        "--socks5-first-node-name",
+        default="first node",
+        help="the name of the first node in all onion chains",
+    )
+    parser.add_argument(
+        "--node",
         action="append",
-        help="listener proxy, format of listener is: [[%s:]%s:]%s" % (
+        help="socks5 node, format of listener is: [[%s:]%s:]%s" % (
+            'name',
             'bind_address',
             'bind_port',
-            'listener_type',
         )
     )
     parser.add_argument(
@@ -40,6 +63,11 @@ def parse_args():
         '--log-file',
         default=None,
         help='name of log file, default is standard output',
+    )
+    parser.add_argument(
+        "--debug",
+        default=False,
+        help="whether to pring debug messages",
     )
     parser.add_argument(
         '--daemon',
@@ -74,13 +102,21 @@ def parse_args():
 def main():
     args = parse_args()
 
-    logging.basicConfig(filename=args.log_file, level=logging.DEBUG)
+    if args.debug:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+    logging.basicConfig(filename=args.log_file, level=log_level)
+
+    logging.info(
+        "Welcome to the Onion Routing project.\n"
+    )
 
     if args.daemon:
         util.daemonize(args.log_file)
 
     def exit_handler(signal, frame):
-        proxy.close_proxy()
+        server.close_server()
 
     signal.signal(signal.SIGINT, exit_handler)
     signal.signal(signal.SIGTERM, exit_handler)
@@ -93,27 +129,45 @@ def main():
         "max_buffer_size": args.max_buffer_size,
 
         "connections": {},
+        "registry": {},
     }
 
-    proxy = async.Proxy(
+    server = async.AsyncServer(
         application_context,
     )
 
-    if args.listener:
-        for l in args.listener:
+    server.add_listener(
+        sockets.HttpServer,
+        args.http_listener_address,
+        args.http_listener_port,
+    )
+    server.add_node(
+        args.socks5_first_node_name,
+        args.socks5_first_node_address,
+        args.socks5_first_node_port,
+        is_first=True,
+    )
+
+    if args.node:
+        for node in args.node:
             (
+                name,
                 bind_address,
                 bind_port,
-                type,
-            ) = l.split(':')
-            proxy.add_listener(
-                listener_types[type],
+            ) = node.split(':')
+            server.add_node(
+                name,
                 bind_address,
                 int(bind_port),
             )
 
-    logging.debug("starting proxy...")
-    proxy.run()
+    logging.info("Starting the async server...")
+
+    server.run()
+
+    logging.info(
+        "Thank you for using Onion Routing project! hope you had a great time Mr. anonymous!"
+    )
 
 
 if __name__ == '__main__':

@@ -21,8 +21,6 @@ class HttpServer(BaseSocket):
 
     request_context = {}
 
-    registry = {}
-
     def __init__(
         self,
         socket,
@@ -44,37 +42,7 @@ class HttpServer(BaseSocket):
 
         self._service_class = None
 
-        self._application_context["registry"] = self.registry
-
         self._reset()
-
-        if not self._application_context["registry"]:
-            self._register("1", "0.0.0.0", 1080)
-            self._register("2", "0.0.0.0", 2080)
-            self._register("3", "0.0.0.0", 3080)
-            self._register("4", "0.0.0.0", 4080)
-
-    def _register(
-        self,
-        name,
-        address,
-        port,
-    ):
-        logging.info(
-            "registring to %s on %s:%s" % (
-                name,
-                address,
-                port,
-            )
-        )
-        node = self._application_context["proxy"].add_node(
-            address,
-            port,
-        )
-        self._application_context["registry"][name] = {
-            "address": address,
-            "node": node,
-        }
 
     def _create_state_machine(
         self,
@@ -116,6 +84,7 @@ class HttpServer(BaseSocket):
                 if not data:
                     break
                 self._buffer += data
+
         except socket.error as e:
             if e.errno != errno.EWOULDBLOCK:
                 raise
