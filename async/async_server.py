@@ -45,8 +45,8 @@ class AsyncServer(object):
         else:
             logging.debug(
                 "closing socket - fd: %d closed, fd: %s %s" % (
-                    entry.fileno(),
-                    entry.partner.fileno() if entry.partner else "",
+                    entry.socket.fileno(),
+                    entry.partner.socket.fileno() if entry.partner else "",
                     "closed" if entry.partner else "parter is None"
                 ),
             )

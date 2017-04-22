@@ -81,6 +81,13 @@ def registry_by_name(
     }
 
 
+def encrypt_decrypt_key_xor(
+    data,
+    key,
+):
+    return "".join(chr(ord(a)^key) for a in data)
+
+
 class DisconnectError(RuntimeError):
     def __init__(self):
         super(DisconnectError, self).__init__("Socket Disconnected")
