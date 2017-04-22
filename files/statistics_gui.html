@@ -1,0 +1,59 @@
+<!-- <head> -->
+
+  <!-- <link rel="stylesheet" type="text/css" href="mystyle.css"> -->
+  <!-- <title>Onion Routing - Main Menu</title> -->
+  
+<!-- </head> -->
+
+<meta http-equiv="refresh" content="1" />
+<head>
+    <link rel="stylesheet" href="pagewrap.css">
+</head>
+<div id="pagewrap">
+    <header>
+        <center>
+            <h1>Onion Routing</h1>
+        </center>
+    </header>
+
+    <section id="content">
+        <h2>New Node Sign Up</h2>
+    <form action="register">
+        Node Name:<br>
+        <input type="text" name="name">
+        <br>
+        Bind Address:<br>
+        <input type="text" name="address">
+        <br>
+        Bind Port:<br>
+        <input type="text" name="port">
+        <br><br>
+        <input type="submit" value="Register">
+    </form>
+    </section>
+
+    <section id="middle">
+        <h2>
+            <center>
+            Statistics
+            </center>
+        </h2>
+        <table border="5" width=700 cellpadding="4" cellspacing="3">
+            <tr><th colspan="5"> Connections: %s</th></tr>
+            <tr><th> </th><th> Socket Type </th><th> Socket File Descriptor </th><th> Bytes </th><th> </th></tr>
+            %s
+        </table>
+    </section>
+
+    <aside id="sidebar">
+        <center>
+            <h2>Existing Nodes</h2>
+            %s
+        </center>
+    </aside>
+
+    <footer>
+        <h4>Onion Chain</h4>
+        <p>Coming soon...</p>
+    </footer>
+</div>

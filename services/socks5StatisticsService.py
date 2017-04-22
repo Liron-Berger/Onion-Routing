@@ -11,100 +11,135 @@ from common import util
 from baseService import BaseService
 
 
-REGISTER_FORM = "/register.html"
+GUI_HTML = '''
+    <meta http-equiv="refresh" content="5" />
+    <head>
+        <link rel="stylesheet" href="pagewrap.css">
+    </head>
+    <div id="pagewrap">
+        <header>
+            <center>
+                <h1>Onion Routing</h1>
+            </center>
+        </header>
+
+        <section id="content">
+            <h2>New Node Sign Up</h2>
+        <form action="register">
+            Node Name:<br>
+            <input type="text" name="name">
+            <br>
+            Bind Address:<br>
+            <input type="text" name="address">
+            <br>
+            Bind Port:<br>
+            <input type="text" name="port">
+            <br><br>
+            <input type="submit" value="Register">
+        </form>
+        </section>
+
+        <section id="middle">
+            <h2>
+                <center>
+                Statistics
+                </center>
+            </h2>
+            <table border="5" width=700 cellpadding="4" cellspacing="3">
+                <tr><th colspan="5"> Connections: %s</th></tr>
+                <tr><th> </th><th> Socket Type </th><th> Socket File Descriptor </th><th> Bytes </th><th> </th></tr>
+                %s
+            </table>
+        </section>
+
+        <aside id="sidebar">
+            <center>
+                <h2>Existing Nodes</h2>
+                %s
+            </center>
+        </aside>
+
+        <footer>
+            <h4>Onion Chain Visualizer</h4>
+            <p>Coming soon...</p>
+        </footer>
+    </div>
+'''
+
+UNREGISTER_BUTTON = '''
+    <button 
+        type="button" 
+        onclick="location.href='/unregister?name=%s'"
+        class="log-btn reg-text"
+    >
+        %s: Unregister
+    </button>
+'''
+
+ROW = '''
+    <tr align="center"> 
+        <td rowspan="2"> %s </td>
+        <td> server </td>
+        <td> %s </td>
+        <td> %s </td>
+        <td rowspan="2"> %s </td>            
+    </tr>
+    <tr align="center"> 
+        <td> partner </td>
+        <td> %s </td>
+        <td> %s </td>
+    </tr>
+'''
+
+DISCONNECT_BUTTON = '''
+    <button 
+        type="button" 
+        onclick="location.href='/disconnect?connection=%d'"
+        class="log-btn reg-text"
+    >
+        Disconnect
+    </button>
+'''
+
 
 
 class Socks5StatisticsService(BaseService):
     NAME = "/statistics"
 
     def before_response_headers(self):
-        try:
-            register = os.path.normpath(
-                '%s%s' % (
-                    "./files",
-                    os.path.normpath(REGISTER_FORM),
-                )
-            )
-            register_form_fd = os.open(register, os.O_RDONLY)
-        except Exception as e:
-            raise util.HTTPError(500, "Internal Error", str(e))
-
-
         self._request_context["response"] = util.text_to_html(
-            self._register_form(register_form_fd) +
-            self._unregister_form() +
-            self._create_table(),
+            GUI_HTML % (
+                len(self._application_context["connections"]),
+                self._table_data(),
+                self._unregister_form(),
+            )
         )
         super(Socks5StatisticsService, self).before_response_headers()
-
-    def _register_form(
-        self,
-        fd,
-    ):
-        return os.read(
-            fd,
-            self._application_context["max_buffer_size"] - len(self._request_context["response"]),
-        )
-
 
     def _unregister_form(
         self,
     ):
         forms = ""
         for node in self._application_context["registry"]:
-            forms += '''
-                <form style="float:right" action="unregister">
-                    <input type="hidden" name="name" value="%s" />
-                    <input type="submit" value="unregister: %s">
-                </form>
-            ''' % (
+            forms += UNREGISTER_BUTTON % (
                 node,
                 node,
             )
         return forms
-
-    def _create_table(
+        
+    def _table_data(
         self,
     ):
-        table = '''<table style="float:left" border="5" width="50%" cellpadding="4" cellspacing="3">'''
-        table += '''<tr><th colspan="5"><br><h3> %s </h3></th></tr>''' % "Socks Statistics"
-        table += '''<tr><th colspan="5"> Connections: %s </th></tr>''' % len(self._application_context["connections"])
-        table += "<tr><th> %s </th><th> %s </th><th> %s </th><th> %s </th><th> %s </th></tr>" % (
-            "",
-            "Socket Type",
-            "Socket File Descriptor",
-            "Bytes",
-            "",
-        )
+        rows = ""
         connection_num = 1
         for sock in self._application_context["connections"]:
-            table += '''<tr align="center"> %s </tr>''' % (
-                '''<td rowspan="2"> %s </td>''' % connection_num +
-                "<td> %s </td>" % "server" +
-                "<td> %s </td>" % self._application_context["connections"][sock]["in"]["fd"] +
-                "<td> %s </td>" % self._application_context["connections"][sock]["in"]["bytes"] +
-                '''<td rowspan="2"> %s </td>''' % self._get_disconnect_form(
-                    sock,
-                )
-            )           
-
-            table += '''<tr align="center"> %s </tr>''' % (
-                "<td> %s </td>" % "partner" +
-                "<td> %s </td>" % self._application_context["connections"][sock]["out"]["fd"] +
-                "<td> %s </td>" % self._application_context["connections"][sock]["out"]["bytes"]
+            rows += ROW % (
+                connection_num,
+                self._application_context["connections"][sock]["in"]["fd"],
+                self._application_context["connections"][sock]["in"]["bytes"],
+                DISCONNECT_BUTTON % sock.fileno(),
+                self._application_context["connections"][sock]["out"]["fd"],
+                self._application_context["connections"][sock]["out"]["bytes"]
             )
             connection_num += 1
-        return table
-
-    def _get_disconnect_form(
-        self,
-        sock,
-    ):
-        return '''
-        <form action="disconnect">
-            <input type="hidden" name="connection" value="%d" />
-            <input type="submit" value="Disconnect">
-        </form>
-        ''' % (
-            sock.fileno(),
-        )
+        return rows
