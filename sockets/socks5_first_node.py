@@ -98,7 +98,7 @@ class Socks5FirstNode(BaseSocket):
                 if not data:
                     raise util.DisconnectError()
 
-                #self._update_byte_counter(len(data))
+                self._update_byte_counter(len(data))
                 self._partner.buffer += data
         except socket.error as e:
             if e.errno != errno.EWOULDBLOCK:
@@ -191,6 +191,13 @@ class Socks5FirstNode(BaseSocket):
                 self._application_context["socket_data"][
                     self._client_proxy.fileno()
                 ] = self._client_proxy
+
+                self._application_context["connections"][
+                    self
+                ]["in"] = {
+                    "bytes": 0,
+                    "fd": self._partner.fileno(),
+                }
             return True
 
     def _partner_state(self):
@@ -199,12 +206,12 @@ class Socks5FirstNode(BaseSocket):
     def _start_byte_counter(self):
         self._application_context["connections"][self] = {
             "in": {
-                "bytes": 0,
-                "fd": self.fileno(),
-            },
-            "out": {
                 "bytes": None,
                 "fd": None,
+            },
+            "out": {
+                "bytes": 0,
+                "fd": self.fileno(),
             },
         }
 
@@ -212,9 +219,9 @@ class Socks5FirstNode(BaseSocket):
         self,
         bytes,
     ):
-        type = "in"
+        type = "out"
         if self._partner != self:
-            type = "out"
+            type = "in"
         self._application_context["connections"][self][type]["bytes"] += bytes
 
     def close(self):

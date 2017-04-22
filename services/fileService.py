@@ -22,7 +22,7 @@ class FileService(BaseService):
         try:
             file_name = os.path.normpath(
                 '%s%s' % (
-                    "./",
+                    "./files",
                     os.path.normpath(self._request_context["uri"]),
                 )
             )

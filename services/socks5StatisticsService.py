@@ -11,12 +11,27 @@ from common import util
 from baseService import BaseService
 
 
+REGISTER_FORM = "/register.html"
+
+
 class Socks5StatisticsService(BaseService):
     NAME = "/statistics"
 
     def before_response_headers(self):
+        try:
+            register = os.path.normpath(
+                '%s%s' % (
+                    "./files",
+                    os.path.normpath(REGISTER_FORM),
+                )
+            )
+            register_form_fd = os.open(register, os.O_RDONLY)
+        except Exception as e:
+            raise util.HTTPError(500, "Internal Error", str(e))
+
+
         self._request_context["response"] = util.text_to_html(
-            self._register_form() +
+            self._register_form(register_form_fd) +
             self._unregister_form() +
             self._create_table(),
         )
@@ -24,21 +39,13 @@ class Socks5StatisticsService(BaseService):
 
     def _register_form(
         self,
+        fd,
     ):
-        return '''
-        <form style="float:right" action="register">
-            Name:<br>
-            <input type="text" name="name">
-            <br>
-            Address:<br>
-            <input type="text" name="address">
-            <br>
-            Port:<br>
-            <input type="text" name="port">
-            <br><br>
-            <input type="submit" value="Register">
-        </form>
-        '''
+        return os.read(
+            fd,
+            self._application_context["max_buffer_size"] - len(self._request_context["response"]),
+        )
+
 
     def _unregister_form(
         self,
