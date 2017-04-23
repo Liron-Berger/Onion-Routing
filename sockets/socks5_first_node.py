@@ -227,9 +227,11 @@ class Socks5FirstNode(BaseSocket):
     def close(self):
         del self._application_context["connections"][self]
         super(Socks5FirstNode, self).close()
+        
+    def close_handler(self):
+        super(Socks5FirstNode, self).close_handler()
+        self._client_proxy.state = constants.CLOSING
 
-    def fileno(self):
-        return self._socket.fileno()
 
     def event(self):
         event = events.BaseEvents.POLLERR

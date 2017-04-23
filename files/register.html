@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="pagewrap.css">
+    <link rel="stylesheet" href="menu.css">
+    <title>Onion Routing - Register</title>
+</head>
+
+<div id="myNav" class="overlay">
+  <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+  <div class="overlay-content">
+    <a href="/about.html">About</a>
+    <a href="/statistics">Statistics</a>
+    <a href="/register.html">Register</a>
+    <a href="/instructions.html">Instructions</a>
+  </div>
+</div>
+
+<span style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776; Menu</span>
+
+<script>
+function openNav() {
+    document.getElementById("myNav").style.height = "100%";
+}
+
+function closeNav() {
+    document.getElementById("myNav").style.height = "0%";
+}
+</script>
+
+    
+<h2> About </h2>
+<form action="register">
+    Name:<br>
+    <input type="text" name="name">
+    <br>
+    Address:<br>
+    <input type="text" name="address">
+    <br>
+    Port:<br>
+    <input type="text" name="port">
+    <br><br>
+    <input type="submit" value="Register">
+</form>
+</html>
+
+

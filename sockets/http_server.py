@@ -305,3 +305,4 @@ class HttpServer(BaseSocket):
             self.request_context,
             self._application_context,
         )
+        self._machine_state = constants.SEND_STATUS

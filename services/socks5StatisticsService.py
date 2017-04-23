@@ -11,11 +11,39 @@ from common import util
 from baseService import BaseService
 
 
-GUI_HTML = '''
-    <meta http-equiv="refresh" content="5" />
+# <META HTTP-EQUIV="refresh" CONTENT="5">
+
+PAGE_HTML = '''
     <head>
         <link rel="stylesheet" href="pagewrap.css">
+        <link rel="stylesheet" href="menu.css">
+        <title>Onion Routing</title>
     </head>
+    
+    <div id="myNav" class="overlay">
+      <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+      <div class="overlay-content">
+        <a href="/about.html">About</a>
+        <a href="/statistics">Statistics</a>
+        <a href="/register.html">Register</a>
+        <a href="/instructions.html">Instructions</a>
+      </div>
+    </div>
+
+    <span style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776; Menu</span>
+
+    <script>
+    function openNav() {
+        document.getElementById("myNav").style.height = "100%";
+    }
+
+    function closeNav() {
+        document.getElementById("myNav").style.height = "0%";
+    }
+    </script>
+''' 
+
+GUI_HTML = '''
     <div id="pagewrap">
         <header>
             <center>
@@ -45,17 +73,34 @@ GUI_HTML = '''
                 Statistics
                 </center>
             </h2>
-            <table border="5" width=700 cellpadding="4" cellspacing="3">
-                <tr><th colspan="5"> Connections: %s</th></tr>
-                <tr><th> </th><th> Socket Type </th><th> Socket File Descriptor </th><th> Bytes </th><th> </th></tr>
-                %s
+            <table width=690 cellpadding="4" cellspacing="3">
+                <tr>
+                    <td>
+                        <table cellspacing="3" cellpadding="4" width="690" border = "5">
+                            <th colspan="5"> Connections: %s</th>
+                        </table>
+                    </td>
+                </tr>
+              
+                <tr>
+                    <td>
+                        <div style="width:690; height:500px; overflow:auto;">
+                            <table cellspacing="3" cellpadding="4" width="690" border = "1">
+                                <tr><th> </th><th> Socket Type </th><th> Socket File Descriptor </th><th> Bytes </th><th> </th></tr>
+                                %s
+                            </table>  
+                        </div>
+                    </td>
+                </tr>
             </table>
         </section>
 
         <aside id="sidebar">
             <center>
                 <h2>Existing Nodes</h2>
-                %s
+                <table>
+                    %s
+                </table>
             </center>
         </aside>
 
@@ -67,13 +112,16 @@ GUI_HTML = '''
 '''
 
 UNREGISTER_BUTTON = '''
-    <button 
+ <tr><td>
+    <button
+        class="myButton"
         type="button" 
         onclick="location.href='/unregister?name=%s'"
         class="log-btn reg-text"
     >
         %s: Unregister
     </button>
+</td></tr>
 '''
 
 ROW = '''
@@ -93,6 +141,7 @@ ROW = '''
 
 DISCONNECT_BUTTON = '''
     <button 
+        class="myButton"
         type="button" 
         onclick="location.href='/disconnect?connection=%d'"
         class="log-btn reg-text"
@@ -108,7 +157,7 @@ class Socks5StatisticsService(BaseService):
 
     def before_response_headers(self):
         self._request_context["response"] = util.text_to_html(
-            GUI_HTML % (
+            PAGE_HTML + GUI_HTML % (
                 len(self._application_context["connections"]),
                 self._table_data(),
                 self._unregister_form(),

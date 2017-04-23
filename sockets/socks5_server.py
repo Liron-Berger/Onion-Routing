@@ -431,6 +431,3 @@ class Socks5Server(BaseSocket):
 
         del self._application_context["connections"][self]
         super(Socks5Server, self).close()
-
-    def fileno(self):
-        return self._socket.fileno()

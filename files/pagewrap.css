@@ -29,7 +29,7 @@ header {
 }
 
 #middle {
-	width: 700px; /* Account for margins + border values */
+	width: 697px; /* Account for margins + border values */
 	float: left;
 	padding: 5px 15px;
 	margin: 0px 5px 5px 5px;
@@ -49,4 +49,35 @@ footer {
 	clear: both;
 	padding: 0 15px;
 	border: solid 1px #ccc;
+}
+
+
+.myButton {
+    background-color: #9D9897; /* Green */
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 12px;
+    width: 100%;
+}
+
+input[type=submit] {
+    background-color: #9D9897; /* Green */
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 12px;
+    width: 100%;
 }

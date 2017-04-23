@@ -45,15 +45,12 @@ class AsyncServer(object):
         else:
             logging.debug(
                 "closing socket - fd: %d closed, fd: %s %s" % (
-                    entry.socket.fileno(),
-                    entry.partner.socket.fileno() if entry.partner else "",
+                    entry.fileno(),
+                    entry.partner.fileno() if entry.partner else "",
                     "closed" if entry.partner else "parter is None"
                 ),
             )
-            entry.state = constants.CLOSING
-            if entry.partner is not None:
-                entry.partner.state = constants.CLOSING
-            entry.buffer = ""
+            entry.close_handler()
 
     def _remove_socket(
         self,
@@ -175,6 +172,11 @@ class AsyncServer(object):
                             self._close_connection(
                                 entry,
                             )
+                        except socket.error as e:
+                            # TODO: find the source of this error, probably something connected to all the partners...
+                            if e.errno != errno.ECONNRESET:
+                                raise
+                            entry.close_handler()
                         except Exception as e:
                             logging.error(
                                 "socket fd: %d, Exception: \n%s" % (

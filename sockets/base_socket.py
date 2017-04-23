@@ -5,6 +5,9 @@ from async import pollable
 from async import events
 from common import constants
 
+import errno
+import socket
+
 
 class BaseSocket(pollable.Pollable):
     """BaseSocket(socket, state, application_context) -> BaseSocket object.
@@ -42,6 +45,8 @@ class BaseSocket(pollable.Pollable):
 
         self._bind_address = bind_address
         self._bind_port = bind_port
+        
+        self._fileno = socket.fileno()
 
     def __repr__(self):
         return "BaseSocket object. address %s, port %s" % (
@@ -55,7 +60,6 @@ class BaseSocket(pollable.Pollable):
         recives data until disconnect or buffer is full.
         data is stored in the partner's buffer.
         """
-
         while not self._partner.full_buffer():
             data = self._socket.recv(
                 self._max_buffer_size - len(self._partner.buffer),
@@ -63,6 +67,7 @@ class BaseSocket(pollable.Pollable):
             if not data:
                 raise DisconnectError()
             self._partner.buffer += data
+            
 
     def write(self):
         """write() -> sends the buffer to socket.
@@ -99,7 +104,7 @@ class BaseSocket(pollable.Pollable):
     def fileno(self):
         """fileno() -> returns socket's fileno."""
 
-        return self._socket.fileno()
+        return self._fileno
 
     def close(self):
         """close() -> closing socket and empty buffer."""
@@ -118,7 +123,12 @@ class BaseSocket(pollable.Pollable):
         """
 
         return len(self._buffer) >= self._max_buffer_size
-
+        
+    def close_handler(self):
+        self._state = constants.CLOSING
+        self._partner.state = constants.CLOSING
+        self._buffer = ""
+        
     @property
     def socket(self):
         return self._socket
