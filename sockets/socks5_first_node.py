@@ -198,6 +198,7 @@ class Socks5FirstNode(BaseSocket):
                     "bytes": 0,
                     "fd": self._partner.fileno(),
                 }
+                
             return True
 
     def _partner_state(self):
@@ -222,8 +223,9 @@ class Socks5FirstNode(BaseSocket):
         type = "out"
         if self._partner != self:
             type = "in"
-        self._application_context["connections"][self][type]["bytes"] += bytes
 
+        self._application_context["connections"][self][type]["bytes"] += bytes
+        
     def close(self):
         del self._application_context["connections"][self]
         super(Socks5FirstNode, self).close()

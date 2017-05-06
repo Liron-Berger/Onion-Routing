@@ -316,6 +316,7 @@ class Socks5Server(BaseSocket):
                 "bytes": 0,
                 "fd": self._partner.fileno(),
             }
+            
         except Exception:
             logging.error(traceback.format_exc())
             reply = GENERAL_SERVER_FAILURE
@@ -431,3 +432,6 @@ class Socks5Server(BaseSocket):
 
         del self._application_context["connections"][self]
         super(Socks5Server, self).close()
+        
+    def close_handler(self):
+        super(Socks5Server, self).close_handler()

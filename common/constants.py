@@ -80,6 +80,7 @@ MIME_MAPPING = {
     'html': 'text/html',
     'png': 'image/png',
     'txt': 'text/plain',
+    'css': 'text/css',
 }
 
 ACCOUNTS = {

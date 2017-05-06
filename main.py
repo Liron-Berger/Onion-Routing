@@ -93,6 +93,10 @@ def parse_args():
         type=int,
         help='max size of buffer in async_socket, default: %(default)s',
     )
+    parser.add_argument(
+        "--xml-file",
+        default="files/statistics.xml",
+    )
 
     args = parser.parse_args()
     args.poll_object = poll_events[args.event_type]
@@ -120,6 +124,12 @@ def main():
 
     signal.signal(signal.SIGINT, exit_handler)
     signal.signal(signal.SIGTERM, exit_handler)
+    
+    connections = {}
+    xml = util.XML(
+        args.xml_file,
+        connections,
+    )
 
     application_context = {
         "log": args.log_file,
@@ -128,10 +138,11 @@ def main():
         "max_connections": args.max_connections,
         "max_buffer_size": args.max_buffer_size,
 
-        "connections": {},
+        "connections": connections,
         "registry": {},
+        "xml": xml,
     }
-
+    
     server = async.AsyncServer(
         application_context,
     )

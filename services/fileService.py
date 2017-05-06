@@ -39,7 +39,7 @@ class FileService(BaseService):
             raise util.HTTPError(500, "Internal Error", str(e))
 
     def response(self):
-        data = os.read(self._request_context["fd"], constants.MAX_BUFFER_SIZE - len(self._request_context["response"]))
+        data = os.read(self._request_context["fd"], 100000 - len(self._request_context["response"]))
         if not data:
             return None
         return data

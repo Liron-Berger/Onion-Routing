@@ -3,6 +3,9 @@
 import errno
 import os
 import signal
+import time
+
+import constants
 
 
 def daemonize(
@@ -86,7 +89,18 @@ def encrypt_decrypt_key_xor(
     key,
 ):
     return "".join(chr(ord(a)^key) for a in data)
-
+    
+    
+def read_file(
+    fd,
+):
+    file = ""
+    while True:
+        data = os.read(fd, constants.MAX_BUFFER_SIZE)
+        if not data:
+            return file
+        file += data
+    
 
 class DisconnectError(RuntimeError):
     def __init__(self):
@@ -108,3 +122,50 @@ class HTTPError(RuntimeError):
         self.code = code
         self.status = status
         self.message = message
+
+        
+class XML(object):
+    def __init__(
+        self,
+        path,
+        connections,
+    ):
+        self._path = path
+        self._fd = os.open(path, os.O_RDWR)
+        self._connections = connections
+        
+    def close_xml(self):
+        os.close(self._fd)
+        
+    def write_to_file(
+        self,
+    ):
+        os.lseek(self._fd, 0, os.SEEK_SET)
+        os.write(self._fd, " "*10000)
+        os.lseek(self._fd, 0, os.SEEK_SET)
+
+        connections = ""
+        for c in self._connections:
+            connections += (
+                "<connection>%s</connection>" % (
+                    (
+                        "<num>%s</num>" +
+                        "<server>%s</server>" +
+                        "<in>%s</in>" +
+                        "<partner>%s</partner>" +
+                        "<out>%s</out>"
+                    ) % (
+                        c.fileno(),
+                        self._connections[c]["in"]["fd"],
+                        self._connections[c]["in"]["bytes"],
+                        self._connections[c]["out"]["fd"],
+                        self._connections[c]["out"]["bytes"],
+                    ),
+                )
+            )
+        xml = "<Statistics><connection_number>%s</connection_number>%s</Statistics>" % (
+            len(self._connections),
+            connections,
+        )
+
+        os.write(self._fd, xml)

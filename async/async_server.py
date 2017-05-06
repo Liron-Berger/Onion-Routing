@@ -5,6 +5,7 @@ import logging
 import select
 import socket
 import traceback
+import time
 
 import sockets
 
@@ -28,6 +29,9 @@ class AsyncServer(object):
 
         self._application_context["socket_data"] = self._socket_data
         self._application_context["async_server"] = self
+        
+        
+        self._x = time.time()
 
     def _create_poller(self):
         poller = self._poll_object()
@@ -128,7 +132,10 @@ class AsyncServer(object):
 
     def run(self):
         while self._socket_data:
-            try:
+            if time.time() - self._x > 2:
+                self._x = time.time()
+                self._application_context["xml"].write_to_file()
+            try:                    
                 if self._close_server:
                     self._terminate()
                 for fd in self._socket_data.keys()[:]:
