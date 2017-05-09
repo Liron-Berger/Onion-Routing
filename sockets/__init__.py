@@ -4,7 +4,7 @@ from http_server import HttpServer
 from socks5_server import Socks5Server
 from node import Node
 from socks5_first_node import Socks5FirstNode
-
+from registry_socket import RegistrySocket
 
 __all__ = [
     "base_socket",

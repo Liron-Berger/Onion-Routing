@@ -29,29 +29,20 @@ def parse_args():
         help="http server bind port"
     )
     parser.add_argument(
-        "--socks5-first-node-address",
+        "--socks5-bind-address",
         default="0.0.0.0",
         help="address of the first node in all onion chains",
     )
     parser.add_argument(
-        "--socks5-first-node-port",
+        "--socks5-bind-port",
         default=1080,
         type=int,
         help="port of the first node in all onion chains",
     )
     parser.add_argument(
-        "--socks5-first-node-name",
-        default="first node",
+        "--socks5-name",
+        default="first",
         help="the name of the first node in all onion chains",
-    )
-    parser.add_argument(
-        "--node",
-        action="append",
-        help="socks5 node, format of listener is: [[%s:]%s:]%s" % (
-            'name',
-            'bind_address',
-            'bind_port',
-        )
     )
     parser.add_argument(
         '--event-type',
@@ -97,6 +88,11 @@ def parse_args():
         "--xml-file",
         default="files/statistics.xml",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["server", "node"],
+        default="server",
+    )
 
     args = parser.parse_args()
     args.poll_object = poll_events[args.event_type]
@@ -105,7 +101,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-
+    
     if args.debug:
         log_level = logging.DEBUG
     else:
@@ -146,38 +142,72 @@ def main():
     server = async.AsyncServer(
         application_context,
     )
+    
+    if args.mode == "server":
+        server.add_listener(
+            sockets.HttpServer,
+            args.http_listener_address,
+            args.http_listener_port,
+        )
+        import socket
+        from common import constants
+        node = sockets.Node(
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+            constants.LISTEN,
+            args.socks5_bind_address,
+            args.socks5_bind_port,
+            application_context,
+            is_first=True,
+            name=args.socks5_name,
+        )
 
-    server.add_listener(
-        sockets.HttpServer,
-        args.http_listener_address,
-        args.http_listener_port,
-    )
-    server.add_node(
-        args.socks5_first_node_name,
-        args.socks5_first_node_address,
-        args.socks5_first_node_port,
-        is_first=True,
-    )
-
-    if args.node:
-        for node in args.node:
-            (
-                name,
-                bind_address,
-                bind_port,
-            ) = node.split(':')
-            server.add_node(
-                name,
-                bind_address,
-                int(bind_port),
+        server.add_socket(
+            node,
+        )
+        server.add_socket(
+            sockets.RegistrySocket(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+                constants.ACTIVE,
+                application_context,
+                args.http_listener_address,
+                args.http_listener_port,
+                node,
             )
+        )
+    elif args.mode == "node":
+        import socket
+        from common import constants
+        node = sockets.Node(
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+            constants.LISTEN,
+            args.socks5_bind_address,
+            args.socks5_bind_port,
+            application_context,
+            is_first=False,
+            name=args.socks5_name,
+        )
+
+        server.add_socket(
+            node,
+        )
+
+        server.add_socket(
+            sockets.RegistrySocket(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+                constants.ACTIVE,
+                application_context,
+                args.http_listener_address,
+                args.http_listener_port,
+                node,
+            )
+        )
 
     logging.info("Starting the async server...")
 
     server.run()
 
     logging.info(
-        "Thank you for using Onion Routing project! hope you had a great time Mr. anonymous!"
+        "Thank you for using Onion Routing project!"
     )
 
 

@@ -101,32 +101,14 @@ class AsyncServer(object):
             )
         )
 
-    def add_node(
+    def add_socket(
         self,
-        name,
-        bind_address,
-        bind_port,
-        is_first=False,
+        socket,
     ):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        node = sockets.Node(
-            s,
-            constants.LISTEN,
-            bind_address,
-            bind_port,
-            self._application_context,
-            is_first,
-        )
-        self._socket_data[s.fileno()] = node
-        self._application_context["registry"][name] = {
-            "address": bind_address,
-            "port": bind_port,
-            "key": node.key,
-            "node": node,
-        }
+        self._socket_data[socket.fileno()] = socket
         logging.info(
-            "New node added: %s" % (
-                node,
+            "New socket added: %s" % (
+                socket,
             )
         )
 
@@ -186,9 +168,10 @@ class AsyncServer(object):
                             entry.close_handler()
                         except Exception as e:
                             logging.error(
-                                "socket fd: %d, Exception: \n%s" % (
+                                "socket fd: %d, Exception: \n%s. socket: %s" % (
                                     fd,
                                     traceback.format_exc(),
+                                    self._socket_data[fd],
                                 ),
                             )
                             self._close_connection(
