@@ -97,7 +97,7 @@ class Socks5FirstNode(BaseSocket):
                 )
                 if not data:
                     raise util.DisconnectError()
-
+                    
                 self._update_byte_counter(len(data))
                 self._partner.buffer += data
         except socket.error as e:

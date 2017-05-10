@@ -8,9 +8,7 @@ import time
 import constants
 
 
-def daemonize(
-    log_fd,
-):
+def daemonize():
     child = os.fork()
     if child != 0:
         os._exit(0)
@@ -18,12 +16,11 @@ def daemonize(
     import resource
 
     for i in range(3, resource.getrlimit(resource.RLIMIT_NOFILE)[1]):
-        if i != log_fd:
-            try:
-                os.close(i)
-            except OSError as e:
-                if e.errno != errno.EBADF:
-                    raise
+        try:
+            os.close(i)
+        except OSError as e:
+            if e.errno != errno.EBADF:
+                raise
 
     signal.signal(signal.SIGHUP, signal.SIG_IGN)
 

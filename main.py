@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import argparse
+import ConfigParser
 import logging
 import signal
 
@@ -8,7 +9,7 @@ import async
 import sockets
 
 from common import util
-
+from common import constants
 
 poll_events = util.registry_by_name(
     async.BaseEvents,
@@ -18,31 +19,8 @@ poll_events = util.registry_by_name(
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--http-listener-address",
-        default="0.0.0.0",
-        help="http server bind address"
-    )
-    parser.add_argument(
-        "--http-listener-port",
-        default=8080,
-        type=int,
-        help="http server bind port"
-    )
-    parser.add_argument(
-        "--socks5-bind-address",
-        default="0.0.0.0",
-        help="address of the first node in all onion chains",
-    )
-    parser.add_argument(
-        "--socks5-bind-port",
-        default=1080,
-        type=int,
-        help="port of the first node in all onion chains",
-    )
-    parser.add_argument(
-        "--socks5-name",
-        default="first",
-        help="the name of the first node in all onion chains",
+        "--node",
+        help="node for Onion Routing. format is [name:address:port]",
     )
     parser.add_argument(
         '--event-type',
@@ -54,11 +32,6 @@ def parse_args():
         '--log-file',
         default=None,
         help='name of log file, default is standard output',
-    )
-    parser.add_argument(
-        "--debug",
-        default=False,
-        help="whether to pring debug messages",
     )
     parser.add_argument(
         '--daemon',
@@ -85,13 +58,21 @@ def parse_args():
         help='max size of buffer in async_socket, default: %(default)s',
     )
     parser.add_argument(
-        "--xml-file",
-        default="files/statistics.xml",
+        "--first-node",
+        default=False,
+        type=bool,
+        help="wheter the program is the first or regular node",
     )
     parser.add_argument(
-        "--mode",
-        choices=["server", "node"],
-        default="server",
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level",
+    )
+    parser.add_argument(
+        "--base",
+        default=constants.BASE,
+        help="base location of files",
     )
 
     args = parser.parse_args()
@@ -99,21 +80,105 @@ def parse_args():
     return args
 
 
+def init_application_context(args):
+    return {
+        "log_file": args.log_file,
+        "poll_object": args.poll_object,
+        "poll_timeout": args.poll_timeout,
+        "max_connections": args.max_connections,
+        "max_buffer_size": args.max_buffer_size,
+        "base": args.base,
+        
+        "registry": {},
+        "connections": {},
+    }
+    
+def init_xml(config, application_context):
+    return util.XML(
+        config.get("xmlFile", "path"),
+        application_context["connections"],
+    )
+    
+    
+def init_first_node(
+    server,
+    config,
+    args,
+):
+    server.add_listener(
+        sockets.Listener,
+        config.get("HttpServer", "bind.address"),
+        config.getint("HttpServer", "bind.port"),
+        sockets.HttpServer,
+    )
+    
+    add_node(
+        server,
+        config,
+        config.get("FirstSocks5Node", "name"),
+        config.get("FirstSocks5Node", "bind.address"),
+        config.getint("FirstSocks5Node", "bind.port"),
+        args.first_node,
+    )
+    
+def init_node(
+    server,
+    config,
+    args,
+):
+    (
+        name,
+        bind_address,
+        bind_port,
+    ) = args.node.split(':')
+    
+    add_node(
+        server,
+        config,
+        name,
+        bind_address,
+        int(bind_port),
+        args.first_node,
+    )
+    
+
+def add_node(
+    server,
+    config,
+    name,
+    bind_address,
+    bind_port,
+    is_first,
+):
+    node = server.add_listener(
+        sockets.Node,
+        bind_address,
+        bind_port,
+        name,
+        is_first,
+    )
+    server.add_socket(
+        sockets.RegistrySocket,
+        config.get("HttpServer", "bind.address"),
+        config.getint("HttpServer", "bind.port"),
+        node,
+    )
+
+
 def main():
     args = parse_args()
-    
-    if args.debug:
-        log_level = logging.DEBUG
-    else:
-        log_level = logging.INFO
-    logging.basicConfig(filename=args.log_file, level=log_level)
+
+    config = ConfigParser.ConfigParser()
+    config.read(constants.CONFIG_NAME)
+
+    logging.basicConfig(filename=args.log_file, level=getattr(logging, args.log_level))
 
     logging.info(
         "Welcome to the Onion Routing project.\n"
     )
 
     if args.daemon:
-        util.daemonize(args.log_file)
+        util.daemonize()
 
     def exit_handler(signal, frame):
         server.close_server()
@@ -121,85 +186,27 @@ def main():
     signal.signal(signal.SIGINT, exit_handler)
     signal.signal(signal.SIGTERM, exit_handler)
     
-    connections = {}
-    xml = util.XML(
-        args.xml_file,
-        connections,
+    application_context = init_application_context(args)
+    application_context["xml"] = init_xml(
+        config,
+        application_context,
     )
-
-    application_context = {
-        "log": args.log_file,
-        "poll_object": args.poll_object,
-        "poll_timeout": args.poll_timeout,
-        "max_connections": args.max_connections,
-        "max_buffer_size": args.max_buffer_size,
-
-        "connections": connections,
-        "registry": {},
-        "xml": xml,
-    }
     
     server = async.AsyncServer(
         application_context,
     )
     
-    if args.mode == "server":
-        server.add_listener(
-            sockets.HttpServer,
-            args.http_listener_address,
-            args.http_listener_port,
+    if args.first_node:
+        init_first_node(
+            server,
+            config,
+            args,
         )
-        import socket
-        from common import constants
-        node = sockets.Node(
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-            constants.LISTEN,
-            args.socks5_bind_address,
-            args.socks5_bind_port,
-            application_context,
-            is_first=True,
-            name=args.socks5_name,
-        )
-
-        server.add_socket(
-            node,
-        )
-        server.add_socket(
-            sockets.RegistrySocket(
-                socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-                constants.ACTIVE,
-                application_context,
-                args.http_listener_address,
-                args.http_listener_port,
-                node,
-            )
-        )
-    elif args.mode == "node":
-        import socket
-        from common import constants
-        node = sockets.Node(
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-            constants.LISTEN,
-            args.socks5_bind_address,
-            args.socks5_bind_port,
-            application_context,
-            is_first=False,
-            name=args.socks5_name,
-        )
-
-        server.add_socket(
-            node,
-        )
-
-        server.add_socket(
-            sockets.RegistrySocket(
-                socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-                constants.ACTIVE,
-                application_context,
-                args.http_listener_address,
-                args.http_listener_port,
-                node,
-            )
+    else:
+        init_node(
+            server,
+            config,
+            args,
         )
 
     logging.info("Starting the async server...")

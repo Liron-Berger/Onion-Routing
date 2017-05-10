@@ -218,6 +218,7 @@ class HttpServer(BaseSocket):
 
     def _http_request(self):
         req = self._recv_line()
+
         if not req:
             return False
 

@@ -77,41 +77,47 @@ class AsyncServer(object):
 
     def close_server(self):
         self._close_server = True
-
+        
     def add_listener(
         self,
-        listener_type,
+        listener_class,
         bind_address,
         bind_port,
+        *args
     ):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket_data[s.fileno()] = sockets.Listener(
+        listener = listener_class(
             s,
             constants.LISTEN,
             bind_address,
             bind_port,
             self._application_context,
-            listener_type,
+            *args
         )
-        logging.info(
-            "New listener added: %s:%s. type: %s." % (
-                bind_address,
-                bind_port,
-                listener_type,
-            )
-        )
-
+        self._socket_data[s.fileno()] = listener
+        logging.info("New %s added." % listener)
+        return listener
+        
     def add_socket(
         self,
-        socket,
+        socket_class,
+        address,
+        port,
+        *args
     ):
-        self._socket_data[socket.fileno()] = socket
-        logging.info(
-            "New socket added: %s" % (
-                socket,
-            )
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        async_socket = socket_class(
+            s,
+            constants.ACTIVE,
+            self._application_context,
+            address,
+            port,
+            *args
         )
-
+        self._socket_data[s.fileno()] = async_socket
+        logging.info("New %s added." % async_socket)
+        return async_socket
+        
     def run(self):
         while self._socket_data:
             if time.time() - self._x > 2:

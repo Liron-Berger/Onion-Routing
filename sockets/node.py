@@ -22,8 +22,8 @@ class Node(listener.Listener):
         bind_address,
         bind_port,
         application_context,
-        is_first=False,
         name="",
+        is_first=False,
     ):
         super(Node, self).__init__(
             sock,
@@ -37,28 +37,6 @@ class Node(listener.Listener):
         self._is_first = is_first
         self._key = random.randint(0, 256)
         self._name = name
-        
-        # self._registry_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        # try:
-            # self._registry_socket.connect(
-                # (
-                    # "192.168.1.9",
-                    # 8080,
-                # )
-            # )
-            # print name
-            # self._registry_socket.send(
-                # 'GET /register?name=%s&address=%s&port=%s&key=%s HTTP/1.1\r\nUser-Agent: Mozilla/4.0 (compatible; MSIE5.01; Windows NT)\r\nHost: www.tutorialspoint.com\r\nAccept-Language: en-us\r\nAccept-Encoding: gzip, deflate\r\nConnection: Keep-Alive\r\n\r\n' % (
-                    # name,
-                    # bind_address,
-                    # bind_port,
-                    # self._key,
-                # )
-            # )
-        # except socket.error as e:
-            # if e.errno not in (errno.EINPROGRESS, errno.EWOULDBLOCK):
-                # raise
 
     def __repr__(self):
         return "Node object. address %s, port %s" % (

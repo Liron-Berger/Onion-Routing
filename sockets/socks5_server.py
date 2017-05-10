@@ -416,7 +416,7 @@ class Socks5Server(BaseSocket):
             )
             if not data:
                 raise util.DisconnectError()
-
+                
             self._update_byte_counter(len(data))
             self._partner.buffer += data
 

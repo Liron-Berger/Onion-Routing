@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
+CONFIG_NAME = "config.ini"
 MAX_BUFFER_SIZE = 1024
+BASE = "files/"
 
 OPTIMAL_NODES_IN_PATH = 3
 
