@@ -4,6 +4,7 @@ from common.util import DisconnectError
 from async import pollable
 from async import events
 from common import constants
+from common import util
 from base_socket import BaseSocket
 
 import errno
@@ -23,7 +24,7 @@ class RegistrySocket(BaseSocket):
     )
     
     UNREGISTER_REQUEST = (
-        'GET /register?name=%s&address=%s&port=%s&key=%s HTTP/1.1\r\n'
+        'GET /unregister?name=%s HTTP/1.1\r\n'
         'User-Agent: Mozilla/4.0 (compatible; MSIE5.01; Windows NT)\r\n'
         'Host: www.tutorialspoint.com\r\n'
         'Accept-Language: en-us\r\n'
@@ -37,37 +38,107 @@ class RegistrySocket(BaseSocket):
         sock,
         state,
         application_context,
-        bind_address,
-        bind_port,
+        address,
+        port,
         node,
     ):
         super(RegistrySocket, self).__init__(
             sock,
             state,
             application_context,
-            bind_address,
-            bind_port,
+            address,
+            port,
         )
         
+        self._connect_to_registry(
+            address,
+            port,
+        )
+        
+        self._state_machine = self._create_state_machine() 
+        self._machine_state = constants.SEND_REGISTER
+        self._node = node       
+        node.registry_socket = self
+        
+    def _create_state_machine(self):
+        return {
+            constants.SEND_REGISTER: {
+                "method": self._send_register,
+                "next": constants.RECV_REGISTER,
+            },
+            constants.RECV_REGISTER: {
+                "method": self._recv_register,
+                "next": constants.WAITING,
+            },
+            constants.SEND_UNREGISTER: {
+                "method": self._send_unregister,
+                "next": constants.RECV_UNREGISTER,
+            },
+            constants.RECV_UNREGISTER: {
+                "method": self._recv_unregister,
+                "next": constants.UNREGISTERED,
+            },
+            constants.WAITING: {
+                "method": self._wait,
+                "next": constants.WAITING,
+            },
+            constants.UNREGISTERED: {
+                "method": self._wait,
+                "next": constants.UNREGISTERED,
+            },
+        }
+        
+    def _send_register(self):
+        self._buffer = RegistrySocket.REGISTER_REQUEST % (
+            self._node.name,
+            self._node.address,
+            self._node.port,
+            self._node.key,
+        )
+        super(RegistrySocket, self).write()
+        return True
+        
+    def _recv_register(self):
+        if "success" in self._buffer:
+            return True
+        elif "fail" in self._buffer:
+            self._state = constants.CLOSING
+            self._node.state = constants.CLOSING
+        else:
+            return False
+            
+    def _send_unregister(self):
+        self._buffer = RegistrySocket.UNREGISTER_REQUEST % (
+            self._node.name,
+        )
+        super(RegistrySocket, self).write()
+        self._state = constants.CLOSING
+        self._node.state = constants.CLOSING
+        return True
+        
+    def _recv_unregister(self):
+        self._state = constants.CLOSING
+        self._node.state = constants.CLOSING
+        return True
+       
+    def _wait(self):
+        pass
+        
+    def _connect_to_registry(
+        self,
+        address,
+        port,
+    ):
         try:
             self._socket.connect(
                 (
-                    bind_address,
-                    bind_port,
+                    address,
+                    port,
                 )
             )
         except socket.error as e:
             if e.errno not in (errno.EINPROGRESS, errno.EWOULDBLOCK):
                 raise
-
-        self._buffer = RegistrySocket.REGISTER_REQUEST % (
-            node.name,
-            node.address,
-            node.port,
-            node.key,
-        )
-        
-        self._node = node
 
     def __repr__(self):
         return "RegistrySocket object. address %s, port %s. fd: %s" % (
@@ -77,41 +148,58 @@ class RegistrySocket(BaseSocket):
         )
         
     def read(self):
-        """read() -> reciving data from partner.
-
-        recives data until disconnect or buffer is full.
-        data is stored in the partner's buffer.
-        """
-        while not self._partner.full_buffer():
-            data = self._socket.recv(
-                self._max_buffer_size - len(self._partner.buffer),
-            )
-            if not data:
-                raise DisconnectError()
-            self._partner.buffer += data
+        data = ""
+        try:
+            while not self.full_buffer():
+                data = self._socket.recv(
+                    self._max_buffer_size - len(self._buffer),
+                )
+                if not data:
+                    break
+                self._buffer += data
+        except socket.error as e:
+            if e.errno != errno.EWOULDBLOCK:
+                raise
+        if not self._buffer:
+            self._machine_state = constants.UNREGISTERED
+            raise util.DisconnectError()
+        if self._machine_state in (
+            constants.RECV_REGISTER,
+            constants.RECV_UNREGISTER,
+        ):
+            if self._state_machine[self._machine_state]["method"]():
+                self._machine_state = self._state_machine[
+                    self._machine_state
+                ]["next"]
             
-            if "fail" in self._partner.buffer:
-                self._node._state = constants.CLOSING
-            self._partner.buffer = ""
-                # self._partner.buffer = RegistrySocket.UNREGISTER_REQUEST % (
-                    # self._node.name,
-                    # self._node.address,
-                    # self._node.port,
-                    # self._node.key,
-                # )
-            
-
     def write(self):
-        """write() -> sends the buffer to socket.
+        if self._machine_state in (
+            constants.SEND_REGISTER,
+            constants.SEND_UNREGISTER,
+        ):
+            if self._state_machine[self._machine_state]["method"]():
+                self._machine_state = self._state_machine[
+                    self._machine_state
+                ]["next"]
+            
+    def unregister(self):
+        self._machine_state = constants.SEND_UNREGISTER
+        
+    def event(self):
+        event = events.BaseEvents.POLLERR
+        if self._machine_state in (
+            constants.RECV_REGISTER,
+            constants.RECV_UNREGISTER,
+        ):
+            event |= events.BaseEvents.POLLIN
+        if self._machine_state in (
+            constants.SEND_REGISTER,
+            constants.SEND_UNREGISTER,        
+        ):
+            event |= events.BaseEvents.POLLOUT
+        return event
+        
+    def remove(self):
+        return self._state == constants.CLOSING and not self._buffer
 
-        sends until buffer is empty.
-        if not the whole buffer was sent, buffer = the remaining message.
-        """
-
-        while self._buffer:
-            self._buffer = self._buffer[
-                self._socket.send(
-                    self._buffer
-                ):
-            ]
         

@@ -49,7 +49,8 @@ class BaseSocket(pollable.Pollable):
         self._fileno = socket.fileno()
 
     def __repr__(self):
-        return "BaseSocket object. address %s, port %s" % (
+        return "BaseSocket object %s. address %s, port %s" % (
+            self.fileno(),
             self._bind_address,
             self._bind_port,
         )
@@ -108,7 +109,7 @@ class BaseSocket(pollable.Pollable):
 
     def close(self):
         """close() -> closing socket and empty buffer."""
-
+        
         self._socket.close()
         self._buffer = ""
 
@@ -126,8 +127,10 @@ class BaseSocket(pollable.Pollable):
         
     def close_handler(self):
         self._state = constants.CLOSING
-        self._partner.state = constants.CLOSING
         self._buffer = ""
+        
+        if self != self._partner and self._partner.buffer != "" and self.partner._state != constants.CLOSING:
+            self._partner.close_handler()
         
     @property
     def socket(self):

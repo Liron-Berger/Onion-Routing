@@ -93,10 +93,10 @@ class Node(listener.Listener):
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM),
                 constants.ACTIVE,
                 self._application_context,
-                client_proxy,
-                path=self._find_nodes(),
                 bind_address=self._bind_address,
                 bind_port=self._bind_port,
+                client_proxy=client_proxy,
+                path=self._find_nodes(),
             )
 
             client_proxy.partner = socks5_node
@@ -119,9 +119,9 @@ class Node(listener.Listener):
         available_nodes = []
         for name in self._application_context["registry"]:
             if self._application_context["registry"][name]["name"] != self._name:
-                available_nodes.append(name)
+                available_nodes.append(self._application_context["registry"][name])
             else:
-                path[str(counter)] = name
+                path[str(counter)] = self._application_context["registry"][name]
                 counter += 1
 
         if not available_nodes:
@@ -139,11 +139,22 @@ class Node(listener.Listener):
                     min(len(available_nodes), constants.OPTIMAL_NODES_IN_PATH - len(chosen_nodes))
                 )
 
-        for name in chosen_nodes:
-            path[str(counter)] = name
+        for node in chosen_nodes:
+            path[str(counter)] = node
             counter += 1
 
         return path
+       
+    def close_handler(self):
+        self.state = constants.CLOSING
+        
+    @property
+    def registry_socket(self):
+        return self._registry_socket
+        
+    @registry_socket.setter
+    def registry_socket(self, sock):
+        self._registry_socket = sock
         
     def close(self):
         """close() -> close the socket."""
@@ -165,3 +176,13 @@ class Node(listener.Listener):
     @property
     def name(self):
         return self._name
+        
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, state):
+        self._state = state
+        if self._state == constants.CLOSING:
+            self._registry_socket.unregister()

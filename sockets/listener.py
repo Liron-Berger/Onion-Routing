@@ -112,6 +112,9 @@ class Listener(pollable.Pollable):
         """close() -> close the socket."""
 
         self._socket.close()
+        
+    def close_handler(self):
+        self._state = constants.CLOSING
 
     def remove(self):
         """remove() -> returns whether socket should be removed."""

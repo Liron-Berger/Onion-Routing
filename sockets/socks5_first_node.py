@@ -20,10 +20,10 @@ class Socks5FirstNode(BaseSocket):
         sock,
         state,
         application_context,
-        client_proxy=None,
-        path=None,
-        bind_address="0.0.0.0",
-        bind_port=9999,
+        bind_address,
+        bind_port,
+        client_proxy,
+        path,
     ):
         super(Socks5FirstNode, self).__init__(
             sock,
@@ -42,10 +42,11 @@ class Socks5FirstNode(BaseSocket):
         self._request_context = {}
 
         self._start_byte_counter()
+        self._connected_nodes = 2
 
         try:
-            connect_address = self._application_context["registry"][path["2"]]["address"]
-            connect_port = self._application_context["registry"][path["2"]]["port"]
+            connect_address = path[str(self._connected_nodes)]["address"]
+            connect_port = path[str(self._connected_nodes)]["port"]
             self._socket.connect(
                 (
                     connect_address,
@@ -56,7 +57,6 @@ class Socks5FirstNode(BaseSocket):
             if e.errno not in (errno.EINPROGRESS, errno.EWOULDBLOCK):
                 raise
 
-        self._connected_nodes = 2
 
     def __repr__(self):
         return "First node in onion chain. address %s, port %s" % (
@@ -118,7 +118,7 @@ class Socks5FirstNode(BaseSocket):
                         self._machine_current_state
                     ]["next"]
         except util.Socks5Error as e:
-            pass #self._http_error(e)
+            pass
 
     def write(self):
         if self._machine_current_state in (
@@ -127,19 +127,34 @@ class Socks5FirstNode(BaseSocket):
             constants.PARTNER_STATE,
         ):
             if self._state_machine[self._machine_current_state]["method"]():
-                super(Socks5FirstNode, self).write()
+                while self._buffer:
+                    self._buffer = self._buffer[
+                        self._socket.send(
+                            util.encrypt_decrypt_key_xor(
+                                self._buffer,
+                                self._path[str(self._connected_nodes)]["key"],
+                            )
+                        ):
+                    ]
 
                 self._machine_current_state = self._state_machine[
                     self._machine_current_state
                 ]["next"]
 
-    def _client_send_greeting(self):
+    def _client_send_greeting(self): 
         try:
-            self._buffer = socks5_util.GreetingRequest.encode(
-                constants.SOCKS5_VERSION,
-                len(constants.SUPPORTED_METHODS),
-                constants.SUPPORTED_METHODS,
-            )
+            if not self._connected_nodes == constants.OPTIMAL_NODES_IN_PATH + 1:
+                self._buffer = socks5_util.GreetingRequest.encode(
+                    constants.SOCKS5_VERSION,
+                    len(constants.SUPPORTED_METHODS_X),
+                    constants.SUPPORTED_METHODS_X,
+                )
+            else:
+                self._buffer = socks5_util.GreetingRequest.encode(
+                    constants.SOCKS5_VERSION,
+                    len(constants.SUPPORTED_METHODS),
+                    constants.SUPPORTED_METHODS,
+                )
             return True
         except Exception:
             return False
@@ -157,8 +172,8 @@ class Socks5FirstNode(BaseSocket):
 
     def _client_send_connection_request(self):
         try:
-            address = self._application_context["registry"][self._path[str(self._connected_nodes + 1)]]["address"]
-            port = self._application_context["registry"][self._path[str(self._connected_nodes + 1)]]["port"]
+            address = self._path[str(self._connected_nodes + 1)]["address"]
+            port = self._path[str(self._connected_nodes + 1)]["port"]
 
             self._buffer = socks5_util.Socks5Request.encode(
                 constants.SOCKS5_VERSION,
@@ -184,7 +199,7 @@ class Socks5FirstNode(BaseSocket):
             return False
         else:
             self._connected_nodes += 1
-            if self._connected_nodes == 4:
+            if self._connected_nodes == constants.OPTIMAL_NODES_IN_PATH + 1:
                 self._state_machine[self._machine_current_state]["next"] = constants.PARTNER_STATE
                 self._partner = self._client_proxy
 
@@ -232,7 +247,9 @@ class Socks5FirstNode(BaseSocket):
         
     def close_handler(self):
         super(Socks5FirstNode, self).close_handler()
-        self._client_proxy.state = constants.CLOSING
+        
+        if self._partner != self._client_proxy:
+            self._client_proxy.close_handler()
 
 
     def event(self):
@@ -242,7 +259,8 @@ class Socks5FirstNode(BaseSocket):
             not self.full_buffer()
         ):
             event |= events.BaseEvents.POLLIN
-        if (self._machine_current_state in 
+        if (
+            self._machine_current_state in 
             (
                 constants.CLIENT_SEND_GREETING,
                 constants.CLIENT_SEND_CONNECTION_REQUEST,

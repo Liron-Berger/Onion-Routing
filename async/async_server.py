@@ -5,7 +5,6 @@ import logging
 import select
 import socket
 import traceback
-import time
 
 import sockets
 
@@ -22,17 +21,15 @@ class AsyncServer(object):
         self,
         application_context,
     ):
+        self._application_context = application_context
+        self._application_context["socket_data"] = self._socket_data
+
         self._poll_object = application_context["poll_object"]
         self._poll_timeout = application_context["poll_timeout"]
         self._max_connections = application_context["max_connections"]
-        self._application_context = application_context
+        self._xml = application_context["xml"]
 
-        self._application_context["socket_data"] = self._socket_data
-        self._application_context["async_server"] = self
         
-        
-        self._x = time.time()
-
     def _create_poller(self):
         poller = self._poll_object()
         for fd in self._socket_data:
@@ -44,9 +41,7 @@ class AsyncServer(object):
         self,
         entry,
     ):
-        if entry.state == constants.LISTEN:
-            entry.state = constants.CLOSING
-        else:
+        if entry.state != constants.LISTEN:
             logging.debug(
                 "closing socket - fd: %d closed, fd: %s %s" % (
                     entry.fileno(),
@@ -54,7 +49,7 @@ class AsyncServer(object):
                     "closed" if entry.partner else "parter is None"
                 ),
             )
-            entry.close_handler()
+        entry.close_handler()
 
     def _remove_socket(
         self,
@@ -65,6 +60,7 @@ class AsyncServer(object):
                 entry.fileno(),
             ),
         )
+        entry.close_handler()
         del self._socket_data[entry.fileno()]
         entry.close()
 
@@ -120,9 +116,6 @@ class AsyncServer(object):
         
     def run(self):
         while self._socket_data:
-            if time.time() - self._x > 2:
-                self._x = time.time()
-                self._application_context["xml"].write_to_file()
             try:                    
                 if self._close_server:
                     self._terminate()
@@ -131,9 +124,11 @@ class AsyncServer(object):
                     if entry.remove():
                         self._remove_socket(entry)
                 try:
+                    update_statistics = False
                     for fd, event in self._create_poller().poll(
                         self._poll_timeout,
                     ):
+                        update_statistics = True
                         logging.debug(
                             "event: %d, socket fd: %d. %s" % (
                                 event,
@@ -167,11 +162,6 @@ class AsyncServer(object):
                             self._close_connection(
                                 entry,
                             )
-                        except socket.error as e:
-                            # TODO: find the source of this error, probably something connected to all the partners...
-                            if e.errno != errno.ECONNRESET:
-                                raise
-                            entry.close_handler()
                         except Exception as e:
                             logging.error(
                                 "socket fd: %d, Exception: \n%s. socket: %s" % (
@@ -183,9 +173,12 @@ class AsyncServer(object):
                             self._close_connection(
                                 entry,
                             )
+                    if update_statistics:
+                        self._xml.update()
                 except select.error as e:
                     if e[0] != errno.EINTR:
                         raise
             except Exception as e:
                 logging.critical(traceback.format_exc())
                 self._terminate()
+                

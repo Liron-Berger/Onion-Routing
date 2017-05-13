@@ -10,6 +10,7 @@ import sockets
 
 from common import util
 from common import constants
+from common import xml_util
 
 poll_events = util.registry_by_name(
     async.BaseEvents,
@@ -41,7 +42,7 @@ def parse_args():
     )
     parser.add_argument(
         '--poll-timeout',
-        default=10000,
+        default=0,
         type=int,
         help='poll timeout, default: %(default)s',
     )
@@ -94,7 +95,7 @@ def init_application_context(args):
     }
     
 def init_xml(config, application_context):
-    return util.XML(
+    return xml_util.XML(
         config.get("xmlFile", "path"),
         application_context["connections"],
     )
@@ -187,35 +188,38 @@ def main():
     signal.signal(signal.SIGTERM, exit_handler)
     
     application_context = init_application_context(args)
+    
     application_context["xml"] = init_xml(
         config,
         application_context,
     )
-    
-    server = async.AsyncServer(
-        application_context,
-    )
-    
-    if args.first_node:
-        init_first_node(
-            server,
-            config,
-            args,
+    try:
+        server = async.AsyncServer(
+            application_context,
         )
-    else:
-        init_node(
-            server,
-            config,
-            args,
+        
+        if args.first_node:
+            init_first_node(
+                server,
+                config,
+                args,
+            )
+        else:
+            init_node(
+                server,
+                config,
+                args,
+            )
+
+        logging.info("Starting the async server...")
+
+        server.run()
+
+        logging.info(
+            "Thank you for using Onion Routing project!"
         )
-
-    logging.info("Starting the async server...")
-
-    server.run()
-
-    logging.info(
-        "Thank you for using Onion Routing project!"
-    )
+    finally:
+        application_context["xml"].close()
 
 
 if __name__ == '__main__':

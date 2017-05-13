@@ -30,7 +30,7 @@ class Socks5Server(BaseSocket):
         state,
         application_context,
         bind_address,
-        bind_port=9999,
+        bind_port,
         key=0,
     ):
         super(Socks5Server, self).__init__(
@@ -48,11 +48,14 @@ class Socks5Server(BaseSocket):
         self._start_byte_counter()
 
         self._key = key
+        self._last_node = True
 
     def __repr__(self):
-        return "Socks5Server object. address %s, port %s" % (
+        return "Socks5Server object %s. address %s, port %s %s" % (
+            self.fileno(),
             self._bind_address,
             self._bind_port,
+            self._last_node,
         )
 
     def _create_state_machine(self):
@@ -112,6 +115,10 @@ class Socks5Server(BaseSocket):
 
         if not self._request_context:
             self._get_socks5_greeting()
+            
+        if constants.MY_SOCKS_SIGNATURE in self._request_context["methods"]:
+            self._last_node = False
+            self._request_context["methods"].remove(constants.MY_SOCKS_SIGNATURE)
  
         method = constants.NO_ACCEPTABLE_METHODS
         for m in self._request_context["methods"]:
@@ -414,6 +421,11 @@ class Socks5Server(BaseSocket):
             data = self._socket.recv(
                 self._max_buffer_size - len(self._partner.buffer),
             )
+            if self._machine_current_state != constants.PARTNER_STATE or self._last_node:
+                data = util.encrypt_decrypt_key_xor(
+                    data,
+                    self._key,
+                )
             if not data:
                 raise util.DisconnectError()
                 

@@ -36,8 +36,6 @@ class UnregisterService(BaseService):
             qs["name"][0],
         )
 
-        self._request_context["response"] = '<a href="statistics">Back to Statistics</a>'
-
         self._request_context["response_headers"] = {
             'Cache-Control': 'no-cache, no-store, must-revalidate', 
             'Pragma': 'no-cache', 
@@ -55,5 +53,4 @@ class UnregisterService(BaseService):
                 name,
             )
         )
-        self._application_context["registry"][name]["node"].state = constants.CLOSING
         del self._application_context["registry"][name]

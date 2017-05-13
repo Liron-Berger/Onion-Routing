@@ -37,6 +37,9 @@ HTTP_STATES = (
 SOCKS5_VERSION = 0x05
 SOCKS5_RESERVED = 0x00
 
+MY_SOCKS_SIGNATURE = 0xaa #special self recognition method, for knowing whether its my socks or the clients.
+
+
 SUPPORTED_METHODS = (
     NO_AUTH,
     NO_ACCEPTABLE_METHODS,
@@ -44,6 +47,17 @@ SUPPORTED_METHODS = (
     0x00,
     0xff,
 )
+
+SUPPORTED_METHODS_X = (
+    NO_AUTH,
+    NO_ACCEPTABLE_METHODS,
+    MY_SOCKS_SIGNATURE,
+) = (
+    0x00,
+    0xff,
+    0xaa,
+)
+
 COMMANDS = (
     CONNECT,
 ) = (
@@ -88,3 +102,20 @@ MIME_MAPPING = {
 ACCOUNTS = {
     "Liron": "Berger",
 }
+
+
+
+
+
+
+
+
+
+REGISTRY_STATES = (
+    SEND_REGISTER,
+    RECV_REGISTER,
+    SEND_UNREGISTER,
+    RECV_UNREGISTER,
+    WAITING,
+    UNREGISTERED,
+) = range(6)
