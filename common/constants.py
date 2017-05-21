@@ -1,8 +1,53 @@
 #!/usr/bin/python
+## @package onion_routing.common.constants
+# Constants used within the program.
+#
+
+## Default timout.
+DEFAULT_TIMEOUT = 0
+
+##Default base directory of files.
+DEFAULT_BASE_DIRECTORY = "files/"
+
+##Default connection number for listeners.
+DEFAULT_CONNECTIONS_NUMBER = 10
+
+##Default maximum size of buffer.
+DEFAULT_BUFFER_SIZE = 1024
+
+REGISTRY_NODE_CONFIG = "registry_node/config.ini"
+NODE_SERVER_CONFIG = "node_server/config.ini"
 
 CONFIG_NAME = "config.ini"
 MAX_BUFFER_SIZE = 1024
-BASE = "files/"
+
+
+
+
+
+XML_TIME_UPDATE = 1
+XML_LAYOUT = (
+    '<Statistics>'
+        '<connection_number>%s</connection_number>'
+        '%s'
+    '</Statistics>'
+)
+
+XML_CONNECTION_BLOCK_LAYOUT = (
+    '<connection>'
+        '<num>%s</num>'
+        '<server>%s</server>'
+        '<in>%s</in>'
+        '<partner>%s</partner>'
+        '<out>%s</out>'
+    '</connection>'
+)
+
+
+
+
+
+
 
 OPTIMAL_NODES_IN_PATH = 3
 
@@ -119,3 +164,15 @@ REGISTRY_STATES = (
     WAITING,
     UNREGISTERED,
 ) = range(6)
+
+SERVICES = [
+    "registry_node.services.disconnect_service",
+    "registry_node.services.register_service",
+    "registry_node.services.statistics_service",
+    "registry_node.services.register_service",
+    "registry_node.services.unregister_service",
+]
+
+
+
+
