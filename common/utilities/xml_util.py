@@ -8,6 +8,7 @@ import os
 import traceback
 
 from common import constants
+from common.utilities import util
 
 
 ## Xml handler.
@@ -46,7 +47,10 @@ class XmlHandler(object):
         self,
     ):
         os.lseek(self._fd, 0, os.SEEK_SET)
-        os.write(self._fd, " " * os.stat(self._path).st_size)
+        util.write_file(
+            self._fd,
+            " " * os.stat(self._path).st_size,
+        )
         os.lseek(self._fd, 0, os.SEEK_SET)
 
         connections = ""
@@ -67,4 +71,7 @@ class XmlHandler(object):
             connections,
         )
 
-        os.write(self._fd, xml)
+        util.write_file(
+            self._fd,
+            xml,
+        )

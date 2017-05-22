@@ -85,6 +85,23 @@ def read_file(
         buffer += data
 
 
+## Write data to file.
+# @param fd (int) file descriptor of file.
+# @param buffer (str) buffer to write.
+#
+def write_file(
+    fd,
+    buffer,
+):
+    while buffer:
+        buffer = buffer[
+            os.write(
+                fd,
+                buffer,
+            ):
+        ]
+
+
 ## Damonize process.
 #
 # 1. Forking process and closing parent.
