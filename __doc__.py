@@ -11,8 +11,8 @@
 #
 # @par
 # Documents:
-#  * @ref README
+#  * @ref README.md
 #
-# @page README README
-# @verbinclude README
+# @page README.md README.md
+# @verbinclude README.md
 #

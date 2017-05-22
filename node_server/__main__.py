@@ -26,7 +26,7 @@ def parse_args():
     )
     parser.add_argument(
         "--bind-port",
-        default=2080,
+        required=True,
         type=int,
         help="bind port of node, default: %(default)s",
     )
