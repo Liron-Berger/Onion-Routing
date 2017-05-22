@@ -8,6 +8,7 @@ import urlparse
 
 from common import constants
 from common.utilities import util
+from common.utilities import http_util
 from registry_node.services import base_service
 
 class FileService(base_service.BaseService):
@@ -41,7 +42,11 @@ class FileService(base_service.BaseService):
                 )
             self._request_context["fd"] = fd
         except Exception as e:
-            raise util.HTTPError(500, "Internal Error", str(e))
+            raise http_util.HTTPError(
+                code=500,
+                status="Internal Error",
+                message=str(e),
+            )
 
     def response(self):
         data = os.read(self._request_context["fd"], 100000 - len(self._request_context["response"]))

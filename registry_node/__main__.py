@@ -21,9 +21,9 @@ from registry_node.pollables import http_server
 
 
 ## Poll events dict.
-poll_events = util.registry_by_name(
-    event_object.BaseEvent,
-)
+poll_events = {
+    event.NAME: event for event in event_object.BaseEvent.__subclasses__()
+}
 
 
 ## Parse program argument.

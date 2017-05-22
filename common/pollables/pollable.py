@@ -3,7 +3,6 @@
 # Base class for all objects used for the poller.
 #
 
-
 ## Pollable is an interface for async sockets async proxy can use.
 # each method must be overriden in inheriting objects.
 #
@@ -17,7 +16,7 @@ class Pollable(object):
     def on_write(self):
         pass
 
-    ## On closing.
+    ## On close event.
     def on_close(self):
         pass
 

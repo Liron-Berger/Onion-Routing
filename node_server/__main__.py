@@ -12,9 +12,9 @@ from common.async import event_object
 from common.utilities import util
 from node_server.pollables import server_node
 
-poll_events = util.registry_by_name(
-    event_object.BaseEvent,
-)
+poll_events = {
+    event.NAME: event for event in event_object.BaseEvent.__subclasses__()
+}
 
 
 def parse_args():

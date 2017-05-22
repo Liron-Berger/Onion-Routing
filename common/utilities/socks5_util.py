@@ -7,6 +7,12 @@ from common import constants
 from common.utilities import util
 
 
+## Error used for handling errors in socks5 protocol.
+class Socks5Error(RuntimeError):
+    def __init__(self):
+        super(Socks5Error, self).__init__("Socks5 Protocol Error")
+
+
 ## Base Socks5 Packet class.
 class Socks5Packet(object):
 
@@ -38,6 +44,7 @@ class GreetingRequest(Socks5Packet):
 
     ## Encode packet message.
     # @param properties (dict) parameters for encoding message.
+    # @returns (str) socks5 message.
     #
     @staticmethod
     def encode(
@@ -54,6 +61,7 @@ class GreetingRequest(Socks5Packet):
 
     ## Decode packet message.
     # @param data (str) encoded message.
+    # @returns (dict) decoded request.
     #
     @staticmethod
     def decode(data):
@@ -87,6 +95,7 @@ class GreetingResponse(Socks5Packet):
 
     ## Encode packet message.
     # @param properties (dict) parameters for encoding message.
+    # @returns (str) socks5 message.
     #
     @staticmethod
     def encode(properties):
@@ -101,6 +110,7 @@ class GreetingResponse(Socks5Packet):
 
     ## Decode packet message.
     # @param data (str) encoded message.
+    # @returns (dict) decoded response.
     #
     @staticmethod
     def decode(data):
@@ -129,6 +139,7 @@ class Socks5Request(Socks5Packet):
 
     ## Encode packet message.
     # @param properties (dict) parameters for encoding message.
+    # @returns (str) socks5 message.
     #
     @staticmethod
     def encode(properties):
@@ -152,6 +163,7 @@ class Socks5Request(Socks5Packet):
 
     ## Decode packet message.
     # @param data (str) encoded message.
+    # @returns (dict) decoded request.
     #
     @staticmethod
     def decode(data):
@@ -202,6 +214,7 @@ class Socks5Response(Socks5Packet):
 
     ## Encode packet message.
     # @param properties (dict) parameters for encoding message.
+    # @returns (str) socks5 message.
     #
     @staticmethod
     def encode(properties):
@@ -229,6 +242,7 @@ class Socks5Response(Socks5Packet):
 
     ## Decode packet message.
     # @param data (str) encoded message.
+    # @returns (dict) decoded response.
     #
     @staticmethod
     def decode(data):
@@ -247,9 +261,3 @@ class Socks5Response(Socks5Packet):
             }
         except Exception:
             raise
-
-
-## Error used for handling errors in socks5 protocol.
-class Socks5Error(RuntimeError):
-    def __init__(self):
-        super(Socks5Error, self).__init__("Socks5 Protocol Error")

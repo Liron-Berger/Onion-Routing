@@ -8,6 +8,7 @@ import traceback
 from common import constants
 from common.async import event_object
 from common.pollables import base_socket
+from common.utilities import encryption_util
 from common.utilities import util
 from common.utilities import socks5_util
 
@@ -127,10 +128,10 @@ class Socks5Client(base_socket.BaseSocket):
             constants.PARTNER_STATE,
         ):
             if self._state_machine[self._machine_current_state]["method"]():
-                self._buffer = util.encrypt_decrypt_key_xor(
+                self._buffer = encryption_util.decrypt(
                     util.send_buffer(
                         self._socket,
-                        util.encrypt_decrypt_key_xor(
+                        encryption_util.encrypt(
                             self._buffer,
                             self._path[str(self._connected_nodes)]["key"],
                         ),
@@ -144,22 +145,16 @@ class Socks5Client(base_socket.BaseSocket):
 
     def _client_send_greeting(self):
         try:
+            methods = list(constants.SUPPORTED_METHODS)
             if not self._connected_nodes == constants.OPTIMAL_NODES_IN_PATH + 1:
-                self._buffer = socks5_util.GreetingRequest.encode(
-                    {
-                        "version": constants.SOCKS5_VERSION,
-                        "number_methods": len(constants.SUPPORTED_METHODS_X),
-                        "methods": constants.SUPPORTED_METHODS_X,
-                    },
-                )
-            else:
-                self._buffer = socks5_util.GreetingRequest.encode(
-                    {
-                        "version": constants.SOCKS5_VERSION,
-                        "number_methods": len(constants.SUPPORTED_METHODS),
-                        "methods": constants.SUPPORTED_METHODS,
-                    },
-                )
+                methods.append(constants.MY_SOCKS_SIGNATURE)
+            self._buffer = socks5_util.GreetingRequest.encode(
+                {
+                    "version": constants.SOCKS5_VERSION,
+                    "number_methods": len(methods),
+                    "methods": methods,
+                },
+            )
             return True
         except Exception:
             return False

@@ -10,6 +10,7 @@ import importlib
 from common import constants
 from common.async import event_object
 from common.pollables import base_socket
+from common.utilities import http_util
 from common.utilities import util
 from registry_node.services import base_service
 from registry_node.services import file_service
@@ -82,7 +83,7 @@ class HttpServer(base_socket.BaseSocket):
                     self._machine_state = self._state_machine[
                         self._machine_state
                     ]["next"]
-        except util.HTTPError as e:
+        except http_util.HTTPError as e:
             self._http_error(e)
 
     def on_write(self):
@@ -92,7 +93,7 @@ class HttpServer(base_socket.BaseSocket):
                     self._machine_state = self._state_machine[
                         self._machine_state
                     ]["next"]
-        except util.HTTPError as e:
+        except http_util.HTTPError as e:
             self._http_error(e)
 
     def _recv_status(self):
@@ -109,7 +110,7 @@ class HttpServer(base_socket.BaseSocket):
             )
             logging.info("service %s was requested" % (self._service_class.NAME))
         except KeyError:
-            raise util.HTTPError(
+            raise http_util.HTTPError(
                 code=500,
                 status="Internal Error",
                 message="service not supported",

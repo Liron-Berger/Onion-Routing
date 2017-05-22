@@ -6,6 +6,7 @@ import socket
 import traceback
 
 from common import constants
+from common.utilities import encryption_util
 from common.utilities import util
 
 from common.pollables import base_socket
@@ -260,7 +261,7 @@ class Socks5Server(base_socket.BaseSocket):
             self._app_context["max_buffer_size"] - len(self._partner.buffer),
         )
         if self._machine_current_state != constants.PARTNER_STATE or self._last_node:
-            data = util.encrypt_decrypt_key_xor(
+            data = encryption_util.decrypt(
                 data,
                 self._key,
             )

@@ -7,6 +7,7 @@ import os
 import urlparse
 
 from common import constants
+from common.utilities import http_util
 from common.utilities import util
 from registry_node.services import base_service
 
@@ -37,7 +38,7 @@ class Socks5StatisticsService(base_service.BaseService):
     NAME = "/statistics"
 
     def before_response_headers(self):
-        self._request_context["response"] = util.text_to_html(
+        self._request_context["response"] = http_util.text_to_html(
             GUI_HTML,
         )
         super(Socks5StatisticsService, self).before_response_headers()

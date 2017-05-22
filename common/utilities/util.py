@@ -1,15 +1,102 @@
 #!/usr/bin/python
+## @package onion_routing.common.utilities.util
+# General utilities for the project.
+#
 
 import errno
 import os
 import signal
 import socket
-import time
 
 from common import constants
 
 
+## Error used for handling disconnecting sockets.
+class DisconnectError(RuntimeError):
+    def __init__(self):
+        super(DisconnectError, self).__init__("Socket Disconnected")
+
+
+## Recieve message from socket.
+# @param sock (socket) the socket to recieve data from.
+# @param max_buffer_size (int) max size of bytes to read.
+# @returns (str) recieved data.
+#
+# Reads as much as possible from socket until maximum size is reached.
+#
+def recieve_buffer(
+    sock,
+    max_buffer_size,
+):
+    buffer = ""
+    try:
+        while len(buffer) < max_buffer_size:
+            data = sock.recv(
+                max_buffer_size,
+            )
+            if not data:
+                raise DisconnectError()
+            buffer += data
+    except socket.error as e:
+        if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
+            raise
+    return buffer
+
+
+## Sending message to socket.
+# @param sock (socket) the socket to send data to.
+# @param buffer (str) buffer to send.
+# @returns (str) the remaining buffer.
+#
+# Sends to socket as much as possible.
+#
+def send_buffer(
+    sock,
+    buffer,
+):
+    try:
+        while buffer:
+            buffer = buffer[
+                sock.send(
+                    buffer
+                ):
+            ]
+    except socket.error as e:
+        if e.errno != errno.EPIPE:
+            raise
+        return ""
+    return buffer
+
+
+## Reading data from file.
+# @param fd (int) file descriptor of file.
+# @param max_buffer_size (int) max size of bytes to read.
+# @returns (str) content of file.
+#
+def read_file(
+    fd,
+    max_buffer_size=constants.DEFAULT_BUFFER_SIZE,
+):
+    buffer = ""
+    while True:
+        data = os.read(fd, max_buffer_size)
+        if not data:
+            return buffer
+        buffer += data
+
+
+## Damonize process.
+#
+# 1. Forking process and closing parent.
+# 2. In child closing all inherited opened file descriptors with resource lib.
+# 3. Redirect standard input, standard output and standard error to /dev/null.
+# 4. Change working directory to /.
+# 5. Fork and exit parent to move child as child of init.
+#
 def daemonize():
+    if os.name == "nt":
+        raise RuntimeError("Daemon not available on Windows...")
+
     child = os.fork()
     if child != 0:
         os._exit(0)
@@ -35,6 +122,10 @@ def daemonize():
         os._exit(0)
 
 
+## Validate ip address.
+# @param ip (str) address for validation.
+# @returns (bool) True if address is IP4.
+#
 def validate_ip(
     ip,
 ):
@@ -48,107 +139,3 @@ def validate_ip(
         if i < 0 or i > 255:
             return False
     return True
-
-
-def text_to_html(
-    text,
-):
-    return (
-        "<HTML>\r\n<BODY>\r\n%s\r\n</BODY>\r\n</HTML>" % text
-    ).decode('utf-8')
-
-
-def create_table_from_sublists(
-    table_data,
-    title,
-):
-    table = ""
-    table += '''<table border="1" width="100%">'''
-    table += "<tr><th>%s</th></tr>" % title
-    for row in table_data:
-        table += "<tr>"
-        for cell in row:
-           table += "<td>%s</td>" % cell
-        table += "</tr>"
-    table += "</table>"
-    return table
-
-
-def registry_by_name(
-    parent_cls,
-):
-    return {
-        cls.NAME: cls for cls in parent_cls.__subclasses__()
-    }
-
-
-def encrypt_decrypt_key_xor(
-    data,
-    key,
-):
-    return "".join(chr(ord(a)^key) for a in data)
-    
-    
-def read_file(
-    fd,
-    max_buffer_size=constants.DEFAULT_BUFFER_SIZE,
-):
-    file = ""
-    while True:
-        data = os.read(fd, max_buffer_size)
-        if not data:
-            return file
-        file += data
-    
-
-class DisconnectError(RuntimeError):
-    def __init__(self):
-        super(DisconnectError, self).__init__("Socket Disconnected")
-
-class HTTPError(RuntimeError):
-    def __init__(
-        self,
-        code,
-        status,
-        message="",
-    ):
-        super(HTTPError, self).__init__(message)
-        self.code = code
-        self.status = status
-        self.message = message
-        
-
-def recieve_buffer(
-    s,
-    free_buffer_size,
-):
-    buffer = ""
-    try:
-        while len(buffer) < free_buffer_size:
-            data = s.recv(
-                free_buffer_size,
-            )
-            if not data:
-                raise DisconnectError()
-            buffer += data
-    except socket.error as e:
-        if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
-            raise
-    return buffer
-
-def send_buffer(
-    s,
-    buffer,
-):
-    try:
-        while buffer:
-            buffer = buffer[
-                s.send(
-                    buffer
-                ):
-            ]
-    except socket.error as e:
-        if e.errno != errno.EPIPE:
-            raise
-        return ""
-    return buffer
