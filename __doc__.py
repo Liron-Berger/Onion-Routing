@@ -9,10 +9,3 @@
 # @par
 # Welcome to Onion Routing project.
 #
-# @par
-# Documents:
-#  * @ref README.md
-#
-# @page README.md README.md
-# @verbinclude README.md
-#

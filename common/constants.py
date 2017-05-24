@@ -194,9 +194,9 @@ MIME_MAPPING = {
 SERVICES = [
     "registry_node.services.disconnect_service",
     "registry_node.services.register_service",
-    "registry_node.services.statistics_service",
     "registry_node.services.register_service",
     "registry_node.services.unregister_service",
+    "registry_node.services.menu_service",
 ]
 
 

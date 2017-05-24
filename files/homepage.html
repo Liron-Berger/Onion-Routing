@@ -1,0 +1,70 @@
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+    <title>Onion Routing - Home Page</title>
+</head>
+
+
+<body>
+
+    <div class="menu">
+        <a class="active" href="/homepage.html">
+            <i class="fa fa-home"></i>
+            Home
+        </a>
+        <a href="/nodes.html">
+            <i class="fa fa-sitemap"></i>
+            Nodes
+        </a>
+        <a href="/statistics.html">
+            <i class="fa fa-bar-chart"></i>
+            Statistics
+        </a>
+        <a href="/gen-doc/html/index.html">
+            <i class="fa fa-files-o"></i>
+            Documentation
+        </a>
+        <a href="/about.html">
+            <i class="fa fa-group"></i>
+            About
+        </a>
+    </div>
+
+    <div class="title">
+        <h1>Onion Routing</h1>
+        <h2 class="subtitle">Surf the Web and protect your privacy</h2>
+        <a href="https://github.com/Liron-Berger/Onion-Routing/" class="animated-button victoria-three">
+            GitHub Repository...
+        </a>
+    </div>
+
+    <div class="page_divider description">
+        <p>
+            A final project for the Gvahim program.
+            This project offers a system that creates anonimizer based on socks5 protocol.
+            The program is based on different nodes and a registry contains name, ip, and secret key of each node.
+            The Registry is HTTP server, allowing register and unregister services.
+            Each node is a listener which registers itself to registry and listens to a chosen port.
+        </p>
+        <p>
+            The program works the following way:
+            The client (browser) connects to the first node via socks5. Once connection is recieved the first node will look up the 
+            registry for three additional random nodes.
+            The first node will establish socks with the second node encrypted using second node's key.
+            The first node will establish socks with the third node using third node's key.
+            The first node will establish socks with the fourth node using fourth node's key.
+            Once last connection is established the first node will forward the original socks connection from the client to 
+            the fourth node encrypted by fourth node's key.
+            In practice it will be as if browser connected directly to the fourth node via socks, thus creating an anonimizer.
+        </p>
+    </div>
+
+    <div class="footer">
+        <i class="fa fa-copyright"></i>
+       	Onion Routing - Project by Liron Berger 
+    </div>
+</body>
+</html>
