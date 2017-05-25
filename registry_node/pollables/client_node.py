@@ -1,4 +1,7 @@
 #!/usr/bin/python
+## @package onion_routing.registry_node.pollables.client_node
+# Client node which is used as the first node to which browser connects.
+#
 
 import logging
 import random
@@ -11,8 +14,20 @@ from common.pollables import listener_socket
 from registry_node.pollables import socks5_client
 
 
-class Node(listener_socket.Listener):
+## Client Node.
+# Nodes responsibly is for opening new connections whenever a connections
+# is recieved.
+#
+class ClientNode(listener_socket.Listener):
 
+    ## Constructor.
+    # @param bind_address (str) bind address of the node.
+    # @param bind_port (int) bind port of the node.
+    # @param app_context (dict) application context.
+    # @listener_type (optional, @ref common.pollables.base_socket) not used.
+    #
+    # Adds itself to the registry menually (the only node to do so).
+    #
     def __init__(
         self,
         bind_address,
@@ -20,93 +35,98 @@ class Node(listener_socket.Listener):
         app_context,
         listener_type=None,
     ):
-        super(Node, self).__init__(
+        super(ClientNode, self).__init__(
             bind_address,
             bind_port,
             app_context,
             listener_type,
         )
 
-        self._name = str(bind_port)
-        self._key = random.randint(0, 256)
-
-        self._app_context["registry"][bind_port] = {
-            "name": str(bind_port),
-            "address": bind_address,
-            "port": bind_port,
-            "key": self._key,
-        }
-
+    ## On read event.
+    # - Accept new connection.
+    # - Create new @ref common.pollables.base_socket from the accepted socket
+    # as browser socket.
+    # - Create new @ref registry_node.pollables.socks5_client for establishing
+    # socks5 with other nodes as socks5_c.
+    # - Get Nodes from registry and choose a random path for anonymization.
+    # - Set browser_socket partner to socks5_c.
+    # - Add socks5_c to @ref common.async.async_server._socket_data.
+    #
     def on_read(self):
         try:
-            client_proxy = None
-            socks5_node = None
+            browser_socket = None
+            socks5_c = None
 
             client, addr = self._socket.accept()
 
-            client_proxy = base_socket.BaseSocket(
+            browser_socket = base_socket.BaseSocket(
                 socket=client,
                 state=constants.ACTIVE,
                 app_context=self._app_context,
             )
 
-            socks5_node = socks5_client.Socks5Client(
+            socks5_c = socks5_client.Socks5Client(
                 socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM),
                 state=constants.ACTIVE,
                 app_context=self._app_context,
-                client_proxy=client_proxy,
-                path=self._find_nodes(),
+                browser_socket=browser_socket,
+                path=self._create_path(),
             )
 
-            client_proxy.partner = socks5_node
+            browser_socket.partner = socks5_c
 
             self._app_context["socket_data"][
-                socks5_node.fileno()
-            ] = socks5_node
+                socks5_c.fileno()
+            ] = socks5_c
         except Exception:
             logging.error(traceback.format_exc())
-            if client_proxy:
-                client_proxy.close()
-            if socks5_node:
-                socks5_node.close()
+            if browser_socket:
+                browser_socket.close()
+            if socks5_c:
+                socks5_c.close()
 
-    def _find_nodes(self):
+    ## Create path.
+    # @returns (dict) Three random nodes from registry.
+    # Chooses three random nodes from registry unless there aren't enough
+    # nodes. In that case some nodes might repeat, or if there are nodes
+    # an error is raised.
+    #
+    def _create_path(self):
+        if not self._app_context["registry"]:
+            raise RuntimeError(
+                "Not Enough nodes registered, at least one is required",
+            )
+
+        chosen_nodes = random.sample(
+            self._app_context["registry"].values(),
+            min(
+                len(self._app_context["registry"]),
+                constants.OPTIMAL_NODES_IN_PATH,
+            ),
+        )
+
+        while len(chosen_nodes) < constants.OPTIMAL_NODES_IN_PATH:
+            chosen_nodes += random.sample(
+                self._app_context["registry"].values(),
+                min(
+                    len(self._app_context["registry"]),
+                    constants.OPTIMAL_NODES_IN_PATH - len(chosen_nodes),
+                ),
+            )
+
         path = {}
-
-        counter = 1
-
-        available_nodes = []
-        for name in self._app_context["registry"]:
-            if self._app_context["registry"][name]["name"] != self._name:
-                available_nodes.append(self._app_context["registry"][name])
-            else:
-                path[str(counter)] = self._app_context["registry"][name]
-                counter += 1
-
-        if not available_nodes:
-            raise RuntimeError("Not Enough nodes registered, at least one more is required")
-        
-        if len(available_nodes) >= constants.OPTIMAL_NODES_IN_PATH:
-            chosen_nodes = random.sample(available_nodes, constants.OPTIMAL_NODES_IN_PATH)
-
-        else:
-            chosen_nodes = random.sample(available_nodes, len(available_nodes))
-
-            while len(chosen_nodes) < constants.OPTIMAL_NODES_IN_PATH:
-                chosen_nodes += random.sample(
-                    available_nodes,
-                    min(len(available_nodes), constants.OPTIMAL_NODES_IN_PATH - len(chosen_nodes))
-                )
-
-        for node in chosen_nodes:
-            path[str(counter)] = node
-            counter += 1
+        for i in range(len(chosen_nodes)):
+            path[str(i + 1)] = chosen_nodes[i]
 
         return path
-        
+
+    ## Retrive @ref _key.
     @property
     def key(self):
         return self._key
 
+    ## String representation.
     def __repr__(self):
-        return "Node object. address %s, port %s"
+        return "ServerNode object. fd: %s" % (
+            self.fileno(),
+        )

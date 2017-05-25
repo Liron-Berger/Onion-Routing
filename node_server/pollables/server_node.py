@@ -15,11 +15,11 @@ from node_server.pollables import socks5_server
 
 
 ## Server Node.
-# The node is responsibly for opening new connections whenever a connections
+# Nodes responsibly is for opening new connections whenever a connections
 # is recieved.
-# Each node has a secret key used for encypting the messages.
+# Each node has a secret key used for encypting all communication.
 #
-class Node(listener_socket.Listener):
+class ServerNode(listener_socket.Listener):
 
     ## Constructor.
     # @param bind_address (str) bind address of the node.
@@ -34,7 +34,7 @@ class Node(listener_socket.Listener):
         app_context,
         listener_type=socks5_server.Socks5Server,
     ):
-        super(Node, self).__init__(
+        super(ServerNode, self).__init__(
             bind_address,
             bind_port,
             app_context,
@@ -103,7 +103,7 @@ class Node(listener_socket.Listener):
 
     ## String representation.
     def __repr__(self):
-        return "Node object. address %s, port %s. fd: %s" % (
+        return "ServerNode object. address %s, port %s. fd: %s" % (
             self.bind_address,
             self.bind_port,
             self.fileno(),

@@ -4,7 +4,6 @@
 #
 
 from common import constants
-from common.utilities import util
 
 
 ## Error used for handling errors in socks5 protocol.
@@ -207,15 +206,15 @@ class Socks5Request(Socks5Packet):
         )
         if (
             version == constants.SOCKS5_VERSION and
-            reserved == constants.SOCKS5_RESERVED and 
+            reserved == constants.SOCKS5_RESERVED and
             command in constants.COMMANDS and
             address_type == constants.IP_4
         ):
             if len(data[4:]) < 6:
                 return
             address, port = (
-                '.'.join(str(n) for n in data[4:len(data)-2]),
-                256*data[-2] + data[-1],
+                '.'.join(str(n) for n in data[4:len(data) - 2]),
+                256 * data[-2] + data[-1],
             )
             if not validate_ip(address):
                 raise Socks5Error()

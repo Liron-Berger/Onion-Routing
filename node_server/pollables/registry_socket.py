@@ -23,12 +23,16 @@ class RegistrySocket(base_socket.BaseSocket):
     # Missing the address and port fields
     # which are filled by each node saperately.
     #
-    REGISTER_REQUEST = "GET /register?address=%s&port=%s&key=%s HTTP/1.1\r\n\r\n"
+    REGISTER_REQUEST = (
+        "GET /register?address=%s&port=%s&key=%s HTTP/1.1\r\n\r\n"
+    )
 
     ## Unregister request structure.
     # Missing the port field which is filled by each node saperately.
     #
-    UNREGISTER_REQUEST = "GET /unregister?port=%s HTTP/1.1\r\n\r\n"
+    UNREGISTER_REQUEST = (
+        "GET /unregister?port=%s HTTP/1.1\r\n\r\n"
+    )
 
     ## Constructor.
     # @param socket (socket) the wrapped socket.

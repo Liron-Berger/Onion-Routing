@@ -62,20 +62,22 @@ class AsyncServer(object):
         del self._socket_data[entry.fileno()]
         entry.close()
 
-    ## terminate the server.
-    # enters common.pollables.pollable.Pollable.on_close() state for all pollables in socket data.
+    ## Terminate the server.
+    # Enters common.pollables.pollable.Pollable.on_close()
+    # state for all pollables in socket data.
     #
     def _terminate(self):
         logging.info("Terminating")
         for entry in self._socket_data.values():
             entry.on_close()
 
-    ## close_server.
+    ## Close server.
     def close_server(self):
         self.terminate = True
 
-    ## add listener to socket data.
-    # @param listener_class (@ref common.pollables.listener_socket) type of new listener.
+    ## Add listener to socket data.
+    # @param listener_class (@ref common.pollables.listener_socket)
+    # type of new listener.
     # @param bind_address (str) address to bind listener.
     # @param bind_port (int) port to bind listener.
     # @param listener_type (optional, @ref common.pollables.pollable) type of
@@ -99,14 +101,14 @@ class AsyncServer(object):
         self._socket_data[listener.fileno()] = listener
         return listener
 
-    ## add @ref pollable to socket data.
+    ## Add @ref pollable to socket data.
     def add_socket(
         self,
         async_socket,
     ):
         self._socket_data[async_socket.fileno()] = async_socket
 
-    ## main loop - running server.
+    ## Main loop - running server.
     def run(self):
         while self._socket_data:
             try:

@@ -1,25 +1,34 @@
 #!/usr/bin/python
+## @package onion_routing.registry_node.pollables.http_server
+# Implementation of HTTP server which supports certain
+# @ref node_server.services.
+#
 
-import errno
 import logging
-import urlparse
-import socket
 import importlib
-
 
 from common import constants
 from common.async import event_object
 from common.pollables import base_socket
 from common.utilities import http_util
-from common.utilities import util
 from registry_node.services import base_service
 from registry_node.services import file_service
 
 
+## Http Server.
 class HttpServer(base_socket.BaseSocket):
 
+    ## Request context.
     request_context = {}
 
+    ## Constructor.
+    # @param socket (socket) the wrapped socket.
+    # @param state (int) state of HttpServer.
+    # @param app_context (dict) application context.
+    #
+    # Creates a wrapper for the given @ref _socket to be able to
+    # read and write from it asynchronously while handling HTTP requests.
+    #
     def __init__(
         self,
         socket,
@@ -32,19 +41,28 @@ class HttpServer(base_socket.BaseSocket):
             app_context,
         )
 
+        ## The state machine of the socket.
         self._state_machine = self._create_state_machine()
+
+        ## Machine current state.
         self._machine_state = constants.RECV_STATUS
 
+        ## Service class of the current request.
         self._service_class = None
-
-        self._reset()
 
         for service in constants.SERVICES:
             importlib.import_module(service)
 
+        ## SERVICES dict for all supported services.
         self.SERVICES = {
             service.NAME: service for service in base_service.BaseService.__subclasses__()
         }
+
+        self._reset()
+
+    ## Create the state machine for socket.
+    # @returns (dict) states to the thier methods.
+    #
     def _create_state_machine(
         self,
     ):
@@ -75,29 +93,22 @@ class HttpServer(base_socket.BaseSocket):
             },
         }
 
-    def on_read(self):
-        super(HttpServer, self).on_read()
-        try:
-            while self._machine_state <= constants.RECV_CONTENT:
-                if self._state_machine[self._machine_state]["method"]():
-                    self._machine_state = self._state_machine[
-                        self._machine_state
-                    ]["next"]
-        except http_util.HTTPError as e:
-            self._http_error(e)
-
-    def on_write(self):
-        try:
-            while self._machine_state >= constants.SEND_STATUS and self._machine_state <= constants.SEND_CONTENT:
-                if self._state_machine[self._machine_state]["method"]():
-                    self._machine_state = self._state_machine[
-                        self._machine_state
-                    ]["next"]
-        except http_util.HTTPError as e:
-            self._http_error(e)
-
+    ## Recv status state.
+    # returns (bool) whether state is finished.
+    #
+    # - If request is HTTP, try to open requested service.
+    # - If no request is supported, try to use
+    # @ref registry_node.services.file_service.
+    # - Call @ref common.services.base_service.before_request_headers().
+    #
+    # In case of error raise HTTPError.
+    #
     def _recv_status(self):
-        if not self._http_request():
+        status, self._buffer = http_util.get_first_line(
+            self._buffer,
+            self.request_context,
+        )
+        if not status:
             return False
 
         try:
@@ -108,7 +119,7 @@ class HttpServer(base_socket.BaseSocket):
                 self.request_context,
                 self._app_context,
             )
-            logging.info("service %s was requested" % (self._service_class.NAME))
+            logging.info("service %s requested" % (self._service_class.NAME))
         except KeyError:
             raise http_util.HTTPError(
                 code=500,
@@ -118,16 +129,38 @@ class HttpServer(base_socket.BaseSocket):
         self._service_class.before_request_headers()
         return True
 
+    ## Recieve headers state.
+    # returns (bool) whether state is finished.
+    #
+    # Get all headers from request.
+    # Call @ref common.services.base_service.before_response_content().
+    #
     def _recv_headers(self):
-        if self._get_headers():
+        status, self._buffer = http_util.get_headers(
+            self._buffer,
+            self.request_context,
+            self._service_class,
+        )
+        if status:
             self._service_class.before_response_content()
             return True
         else:
             self._service_class.before_response_content()
             return False
 
+    ## Recieve content state.
+    # returns (bool) whether state is finished.
+    #
+    # Get content from request.
+    # - Call @ref common.services.base_service.handle_content().
+    # - After handle_content:
+    # Call @ref common.services.base_service.before_response_status().
+    #
     def _recv_content(self):
-        self._get_content()
+        http_util.get_content(
+            self._buffer,
+            self.request_context,
+        )
         while self._service_class.handle_content():
             pass
         if "content_length" not in self.request_context:
@@ -136,6 +169,12 @@ class HttpServer(base_socket.BaseSocket):
         elif not self._buffer:
             return False
 
+    ## Send status state.
+    # returns (bool) whether state is finished.
+    #
+    # - Update @ref _buffer to appropriate HTTP status.
+    # - Call @ref common.services.base_service.before_response_headers().
+    #
     def _send_status(self):
         self._buffer = (
             "%s %s %s\r\n"
@@ -147,14 +186,31 @@ class HttpServer(base_socket.BaseSocket):
         self._service_class.before_response_headers()
         return True
 
+    ## Send headers state.
+    # returns (bool) whether state is finished.
+    #
+    # - Set headers for HTTP response according to _service_class.
+    # - Call @ref common.services.base_service.before_response_content().
+    #
     def _send_headers(self):
-        if self._set_headers():
+        status, self._buffer = http_util.set_headers(
+            self._buffer,
+            self.request_context,
+        )
+        if status:
             self._service_class.before_response_content()
             return True
         else:
             self._service_class.before_response_content()
             return False
 
+    ## Send content state.
+    # returns (bool) whether state is finished.
+    #
+    # Add content from _service_class.response() to _buffer and
+    # send the whole HTTP response it to client.
+    # On end of content: @ref common.services.base_service.before_terminate().
+    #
     def _send_content(self):
         content = None
         content = self._service_class.response()
@@ -164,26 +220,14 @@ class HttpServer(base_socket.BaseSocket):
             return True
         else:
             self._buffer += content
-            while self._buffer:
-                self._buffer = self._buffer[
-                    self._socket.send(
-                        self._buffer
-                    ):
-                ]
+            super(HttpServer, self).on_write()
             return False
 
-    def get_events(self):
-        event = event_object.BaseEvent.POLLERR
-        if (
-            self._state == constants.ACTIVE and
-            not len(self._buffer) >= self._app_context["max_buffer_size"] and
-            self._machine_state <= constants.RECV_CONTENT
-        ):
-            event |= event_object.BaseEvent.POLLIN
-        if self._machine_state >= constants.SEND_STATUS and self._machine_state <= constants.SEND_CONTENT:
-            event |= event_object.BaseEvent.POLLOUT
-        return event
-
+    ## Reset _request_context.
+    # Empty all request fields of previous request.
+    # Empty _buffer.
+    # Empty _service_class.
+    #
     def _reset(self):
         self.request_context = {
             "uri": "",
@@ -193,86 +237,16 @@ class HttpServer(base_socket.BaseSocket):
             "request_headers": {},
             "response_headers": {},
             "response": "",
+            "content": "",
+            "app_context": self._app_context,
         }
         self._buffer = ""
         self._service_class = None
 
-    def _http_request(self):
-        req = self._recv_line()
-
-        if not req:
-            return False
-
-        req_comps = req.split(" ", 2)
-        if len(req_comps) != 3:
-            raise RuntimeError("Incomplete HTTP protocol")
-        if req_comps[2] != constants.HTTP_SIGNATURE:
-            raise RuntimeError("Not HTTP protocol")
-
-        method, uri, signature = req_comps
-        if method != 'GET':
-            raise RuntimeError(
-                "HTTP unsupported method '%s'" % method
-            )
-        if not uri or uri[0] != '/':
-            raise RuntimeError("Invalid URI")
-
-        self.request_context["uri"] = uri
-        self.request_context["parse"] = urlparse.urlparse(uri)
-
-        return True
-
-    def _get_headers(self):
-        finished = False
-        for i in range(constants.MAX_NUMBER_OF_HEADERS):
-            line = self._recv_line()
-            if line is None:
-                break
-            if line == "":
-                finished = True
-                break
-            line = self._parse_header(line)
-            if line[0] in self._service_class.wanted_headers():
-                self.request_context["request_headers"][line[0]] = line[1]
-        else:
-            raise RuntimeError("Exceeded max number of headers")
-        return finished
-
-    def _get_content(self):
-        if "content_length" in self.request_context:
-            content = self._buffer[:min(
-                self.request_context["content_length"],
-                self._max_buffer_size - len(self.request_context["content"]),
-            )]
-            self.request_context["content"] += content
-            self.request_context["content_length"] -= len(content)
-            self._buffer = self._buffer[len(content):]
-
-    def _set_headers(self):
-        for key, value in self.request_context["response_headers"].iteritems():
-            self._buffer += (
-                "%s: %s\r\n" % (key, value)
-            )
-        self._buffer += ("\r\n")
-        return True
-
-    def _recv_line(self):
-        n = self._buffer.find(constants.CRLF_BIN)
-
-        if n == -1:
-            return None
-
-        line = self._buffer[:n].decode("utf-8")
-        self._buffer = self._buffer[n + len(constants.CRLF_BIN):]
-        return line
-
-    def _parse_header(self, line):
-        SEP = ':'
-        n = line.find(SEP)
-        if n == -1:
-            raise RuntimeError('Invalid header received')
-        return line[:n].rstrip(), line[n + len(SEP):].lstrip()
-
+    ## HTTP error handler.
+    # @param e (HTTPError) the HTTPError which was caught.
+    # Fills @ref request_context with error response status, headers, content.
+    #
     def _http_error(self, e):
         self.request_context["code"] = e.code
         self.request_context["status"] = e.status
@@ -289,8 +263,72 @@ class HttpServer(base_socket.BaseSocket):
         )
         self._machine_state = constants.SEND_STATUS
 
-    # def __repr__(self):
-        # return "HttpServer object. address %s, port %s" % (
-            # self._bind_address,
-            # self._bind_port,
-        # )
+    ## On read event.
+    # Read from @ref _partner until maximum size of @ref _buffer is recived.
+    #
+    # Enter the appropriate state in _state_machine.
+    # Once state is finished, go to the next state.
+    # On HTTPError: call @ref _http_error().
+    #
+    def on_read(self):
+        super(HttpServer, self).on_read()
+        try:
+            while self._machine_state <= constants.RECV_CONTENT:
+                if self._state_machine[self._machine_state]["method"]():
+                    self._machine_state = self._state_machine[
+                        self._machine_state
+                    ]["next"]
+        except http_util.HTTPError as e:
+            self._http_error(e)
+
+    ## On write event.
+    # Write everything stored and @ref _buffer.
+    #
+    # Enter the appropriate state in _state_machine.
+    # Once state is finished, go to the next state.
+    # On HTTPError: call @ref _http_error().
+    #
+    def on_write(self):
+        try:
+            while(
+                self._machine_state >= constants.SEND_STATUS and
+                self._machine_state <= constants.SEND_CONTENT
+            ):
+                if self._state_machine[self._machine_state]["method"]():
+                    self._machine_state = self._state_machine[
+                        self._machine_state
+                    ]["next"]
+        except http_util.HTTPError as e:
+            self._http_error(e)
+
+    ## Get events for poller.
+    # @retuns (int) events to register for poller.
+    #
+    # POLLIN when:
+    # - @ref _state is ACTIVE.
+    # - @ref _buffer is not full.
+    # - @ref _machine_state is less then RECV_CONTENT.
+    # POLLOUT when:
+    # - @ref _buffer is not empty.
+    # - SEND_STATUS <= @ref _machine_state <= SEND_CONTENT
+    #
+    def get_events(self):
+        event = event_object.BaseEvent.POLLERR
+        if (
+            self._state == constants.ACTIVE and
+            not len(self._buffer) >= self._app_context["max_buffer_size"] and
+            self._machine_state <= constants.RECV_CONTENT
+        ):
+            event |= event_object.BaseEvent.POLLIN
+        if(
+            self._machine_state >= constants.SEND_STATUS and
+            self._machine_state <= constants.SEND_CONTENT
+        ):
+            event |= event_object.BaseEvent.POLLOUT
+        return event
+
+    ## String representation.
+    def __repr__(self):
+        return "HttpServer object. fd: %s" % (
+            self.fileno(),
+        )

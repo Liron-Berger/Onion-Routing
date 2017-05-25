@@ -1,4 +1,9 @@
 #!/usr/bin/python
+## @package onion_routing.registry_node.pollables.socks5_client
+# Socks5 client socket, responsible for establishing connections to all other
+# nodes, and later serves as proxy for encrypting all communication with
+# the browser.
+#
 
 import errno
 import logging
@@ -20,7 +25,7 @@ class Socks5Client(base_socket.BaseSocket):
         socket,
         state,
         app_context,
-        client_proxy,
+        browser_socket,
         path,
     ):
         super(Socks5Client, self).__init__(
@@ -29,7 +34,7 @@ class Socks5Client(base_socket.BaseSocket):
             app_context,
         )
 
-        self._client_proxy = client_proxy
+        self._browser_socket = browser_socket
         self._path = path
 
         self._machine_current_state = constants.CLIENT_SEND_GREETING
@@ -38,7 +43,7 @@ class Socks5Client(base_socket.BaseSocket):
         self._request_context = {}
 
         self._start_byte_counter()
-        self._connected_nodes = 2
+        self._connected_nodes = 1
 
         self._connect()
 
@@ -132,7 +137,7 @@ class Socks5Client(base_socket.BaseSocket):
     def _client_send_greeting(self):
         try:
             methods = list(constants.SUPPORTED_METHODS)
-            if not self._connected_nodes == constants.OPTIMAL_NODES_IN_PATH + 1:
+            if not self._connected_nodes == constants.OPTIMAL_NODES_IN_PATH:
                 methods.append(constants.MY_SOCKS_SIGNATURE)
             self._buffer = socks5_util.GreetingRequest.encode(
                 {
@@ -159,8 +164,8 @@ class Socks5Client(base_socket.BaseSocket):
 
     def _client_send_connection_request(self):
         try:
-            address = self._path[str(self._connected_nodes + 1)]["address"]
-            port = self._path[str(self._connected_nodes + 1)]["port"]
+            address = self._path[str(self._connected_nodes)]["address"]
+            port = self._path[str(self._connected_nodes)]["port"]
 
             self._buffer = socks5_util.Socks5Request.encode(
                 {
@@ -188,13 +193,13 @@ class Socks5Client(base_socket.BaseSocket):
             return False
         else:
             self._connected_nodes += 1
-            if self._connected_nodes == constants.OPTIMAL_NODES_IN_PATH + 1:
+            if self._connected_nodes == constants.OPTIMAL_NODES_IN_PATH:
                 self._state_machine[self._machine_current_state]["next"] = constants.PARTNER_STATE
-                self._partner = self._client_proxy
+                self._partner = self._browser_socket
 
                 self._app_context["socket_data"][
-                    self._client_proxy.fileno()
-                ] = self._client_proxy
+                    self._browser_socket.fileno()
+                ] = self._browser_socket
 
                 self._app_context["connections"][
                     self
@@ -233,8 +238,8 @@ class Socks5Client(base_socket.BaseSocket):
     def on_close(self):
         super(Socks5Client, self).on_close()
         
-        if self._partner != self._client_proxy:
-            self._client_proxy.on_close()
+        if self._partner != self._browser_socket:
+            self._browser_socket.on_close()
         
     def close(self):
         del self._app_context["connections"][self]

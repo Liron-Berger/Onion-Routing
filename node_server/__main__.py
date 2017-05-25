@@ -12,7 +12,7 @@ from common import constants
 from common.async import async_server
 from common.async import event_object
 from common.utilities import util
-from node_server.pollables import node
+from node_server.pollables import server_node
 
 
 ## Dictionary off all possible events for poller.
@@ -126,12 +126,12 @@ def __main__():
         app_context,
     )
 
-    n = server.add_listener(
-        node.Node,
+    node = server.add_listener(
+        server_node.ServerNode,
         args.bind_address,
         args.bind_port,
     )
-    server.add_socket(n.registry_socket)
+    server.add_socket(node.registry_socket)
 
     logging.info("Starting the async server...")
 

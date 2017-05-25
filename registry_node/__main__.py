@@ -139,7 +139,7 @@ def __main__():
     )
 
     server.add_listener(
-        client_node.Node,
+        client_node.ClientNode,
         config.get("ClientNode", "bind.address"),
         config.getint("ClientNode", "bind.port"),
     )
