@@ -98,8 +98,8 @@ class BaseSocket(pollable.Pollable):
     ## Get events for poller.
     # @retuns (int) events to register for poller.
     #
-    # POLLIN when @ref _state is ACTIVE and @ref _buffer is not full.
-    # POLLOUT when @ref _buffer is not empty.
+    # - POLLIN when @ref _state is ACTIVE and @ref _buffer is not full.
+    # - POLLOUT when @ref _buffer is not empty.
     #
     def get_events(self):
         event = event_object.BaseEvent.POLLERR

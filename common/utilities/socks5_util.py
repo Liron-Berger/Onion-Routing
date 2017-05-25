@@ -47,9 +47,7 @@ class GreetingRequest(Socks5Packet):
     # @returns (str) socks5 message.
     #
     @staticmethod
-    def encode(
-        properties,
-    ):
+    def encode(properties):
         try:
             return "%s%s%s" % (
                 chr(properties["version"]),
@@ -64,23 +62,49 @@ class GreetingRequest(Socks5Packet):
     # @returns (dict) decoded request.
     #
     @staticmethod
-    def decode(data):
-        try:
-            version = ord(data[0])
-            number_methods = ord(data[1])
-            methods = [ord(i) for i in data[2:2 + number_methods]]
-        except IndexError:
-            raise Socks5Error()
-        if version != constants.VERSION:
-            raise NotImplementedError("socks %s not supported" % version)
-        if number_methods < 1 or number_methods > 255:
+    def decode(buffer):
+        if len(buffer) < 3:
+            return
+        data = [ord(a) for a in buffer]
+        (
+            version,
+            number_methods,
+            methods,
+        ) = (
+            data[0],
+            data[1],
+            data[2:],
+        )
+
+        if version == constants.SOCKS5_VERSION:
+            if len(methods) < number_methods:
+                return
+            elif len(methods) > number_methods:
+                raise Socks5Error()
+            return {
+                "version": version,
+                "number_methods": number_methods,
+                "methods": methods,
+            }
+        else:
             raise Socks5Error()
 
-        return {
-            "version": version,
-            "number_methods": number_methods,
-            "methods": methods,
-        }
+        # try:
+            # version = ord(data[0])
+            # number_methods = ord(data[1])
+            # methods = [ord(i) for i in data[2:2 + number_methods]]
+        # except IndexError:
+            # raise Socks5Error()
+        # if version != constants.VERSION:
+            # raise NotImplementedError("socks %s not supported" % version)
+        # if number_methods < 1 or number_methods > 255:
+            # raise Socks5Error()
+
+        # return {
+            # "version": version,
+            # "number_methods": number_methods,
+            # "methods": methods,
+        # }
 
 
 ## Greeting Response Packet.
@@ -166,36 +190,45 @@ class Socks5Request(Socks5Packet):
     # @returns (dict) decoded request.
     #
     @staticmethod
-    def decode(data):
-        try:
-            request = {
-                "version": ord(data[0]),
-                "command": ord(data[1]),
-                "reserved": ord(data[2]),
-                "address_type": ord(data[3]),
-                "dst_address": '.'.join(
-                    str(i) for i in map(
-                        ord, data[4:len(data) - 2]
-                    )
-                ),
-                "dst_port": 256 * ord(data[-2]) + ord(data[-1]),
+    def decode(buffer):
+        if len(buffer) < 4:
+            return
+        data = [ord(a) for a in buffer]
+        (
+            version,
+            command,
+            reserved,
+            address_type,
+        ) = (
+            data[0],
+            data[1],
+            data[2],
+            data[3],
+        )
+        if (
+            version == constants.SOCKS5_VERSION and
+            reserved == constants.SOCKS5_RESERVED and 
+            command in constants.COMMANDS and
+            address_type == constants.IP_4
+        ):
+            if len(data[4:]) < 6:
+                return
+            address, port = (
+                '.'.join(str(n) for n in data[4:len(data)-2]),
+                256*data[-2] + data[-1],
+            )
+            if not validate_ip(address):
+                raise Socks5Error()
+            return {
+                "version": version,
+                "command": command,
+                "reserved": reserved,
+                "address_type": address_type,
+                "address": address,
+                "port": port,
             }
-        except IndexError:
+        else:
             raise Socks5Error()
-
-        if (
-            request["version"] != constants.VERSION or
-            request["command"] not in constants.SUPPORTED_COMMANDS or
-            request["address_type"] not in constants.SUPPORTED_ADDRESS_TYPE
-        ):
-            raise NotImplementedError()
-        if (
-            request["reserved"] != 0 or
-            not util.validate_ip(request["dst_address"])
-        ):
-            raise Socks5Error()
-
-        return request
 
 
 ## Socks5 Request Packet.
@@ -218,7 +251,7 @@ class Socks5Response(Socks5Packet):
     #
     @staticmethod
     def encode(properties):
-        if properties["version"] != constants.VERSION:
+        if properties["version"] != constants.SOCKS5_VERSION:
             raise Socks5Error()
 
         try:
@@ -229,11 +262,11 @@ class Socks5Response(Socks5Packet):
                 chr(properties["address_type"]),
                 ''.join(
                     chr(int(x))
-                    for x in properties["dst_address"].split('.')
+                    for x in properties["address"].split('.')
                 ),
                 (
-                    chr(properties["dst_port"] / 256) +
-                    chr(properties["dst_port"] % 256)
+                    chr(properties["port"] / 256) +
+                    chr(properties["port"] % 256)
                 ),
             )
         except Exception:
@@ -261,3 +294,22 @@ class Socks5Response(Socks5Packet):
             }
         except Exception:
             raise
+
+
+## Validate ip address.
+# @param ip (str) address for validation.
+# @returns (bool) True if address is IP4.
+#
+def validate_ip(
+    ip,
+):
+    a = ip.split('.')
+    if len(a) != 4:
+        return False
+    for x in a:
+        if not x.isdigit():
+            return False
+        i = int(x)
+        if i < 0 or i > 255:
+            return False
+    return True

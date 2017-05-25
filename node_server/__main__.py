@@ -1,22 +1,29 @@
 #!/usr/bin/python
+## @package onion_routing.node_server.__main__
+# The main module for the node server.
+#
 
 import argparse
 import ConfigParser
 import logging
 import signal
-import socket
 
 from common import constants
 from common.async import async_server
 from common.async import event_object
 from common.utilities import util
-from node_server.pollables import server_node
+from node_server.pollables import node
 
+
+## Dictionary off all possible events for poller.
 poll_events = {
     event.NAME: event for event in event_object.BaseEvent.__subclasses__()
 }
 
 
+## Parse program argument.
+# @returns (dict) program arguments.
+#
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -79,11 +86,15 @@ def parse_args():
     args = parser.parse_args()
     args.poll_object = poll_events[args.event_type]
     return args
-   
 
+
+## Main implementation.
 def __main__():
     args = parse_args()
-    logging.basicConfig(filename=args.log_file, level=getattr(logging, args.log_level))
+    logging.basicConfig(
+        filename=args.log_file,
+        level=getattr(logging, args.log_level),
+    )
 
     config = ConfigParser.ConfigParser()
     config.read(constants.REGISTRY_NODE_CONFIG)
@@ -98,7 +109,7 @@ def __main__():
 
     signal.signal(signal.SIGINT, exit_handler)
     signal.signal(signal.SIGTERM, exit_handler)
-    
+
     app_context = {
         "log_file": args.log_file,
         "poll_object": args.poll_object,
@@ -115,12 +126,12 @@ def __main__():
         app_context,
     )
 
-    node = server.add_listener(
-        server_node.ServerNode,
+    n = server.add_listener(
+        node.Node,
         args.bind_address,
         args.bind_port,
     )
-    server.add_socket(node.registry_socket)
+    server.add_socket(n.registry_socket)
 
     logging.info("Starting the async server...")
 

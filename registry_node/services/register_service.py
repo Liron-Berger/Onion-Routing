@@ -34,9 +34,8 @@ class RegisterService(base_service.BaseService):
             qs = urlparse.parse_qs(self._request_context["parse"].query)
             
             self._register(
-                qs["name"][0],
                 qs["address"][0],
-                int(qs["port"][0]),
+                qs["port"][0],
                 int(qs["key"][0]),
             )
 
@@ -54,22 +53,20 @@ class RegisterService(base_service.BaseService):
 
     def _register(
         self,
-        name,
         address,
         port,
         key,
     ):
         logging.info(
-            "registring to %s on %s:%s" % (
-                name,
+            "registring %s:%s" % (
                 address,
                 port,
             )
         )
-        self._application_context["registry"][name] = {
-            "name": name,
+        self._application_context["registry"][port] = {
+            "name": port,
             "address": address,
-            "port": port,
+            "port": int(port),
             "key": key,
         }
         logging.info(

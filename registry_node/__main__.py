@@ -1,13 +1,12 @@
 #!/usr/bin/python
 ## @package onion_routing.registry_node.__main__
-# Regisry node. using http server as registry and 
-# client socks5 node as the first node in the chain.
+# Regisry node. using http server as registry and
+# socks5 client node as the first node in the chain.
 #
 
 import argparse
 import ConfigParser
 import logging
-import os
 import signal
 
 from common import constants
@@ -86,7 +85,10 @@ def parse_args():
 ## Main implementation.
 def __main__():
     args = parse_args()
-    logging.basicConfig(filename=args.log_file, level=getattr(logging, args.log_level))
+    logging.basicConfig(
+        filename=args.log_file,
+        level=getattr(logging, args.log_level),
+    )
 
     config = ConfigParser.ConfigParser()
     config.read(constants.REGISTRY_NODE_CONFIG)
@@ -103,7 +105,7 @@ def __main__():
         "max_connections": args.max_connections,
         "max_buffer_size": args.max_buffer_size,
         "base": args.base,
-        
+
         "registry": {},
         "connections": {},
     }
@@ -128,14 +130,14 @@ def __main__():
     server = async_server.AsyncServer(
         application_context,
     )
-    
+
     server.add_listener(
         listener_socket.Listener,
         config.get("HttpServer", "bind.address"),
         config.getint("HttpServer", "bind.port"),
         listener_type=http_server.HttpServer,
     )
-    
+
     server.add_listener(
         client_node.Node,
         config.get("ClientNode", "bind.address"),

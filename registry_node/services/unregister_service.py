@@ -32,16 +32,12 @@ class UnregisterService(base_service.BaseService):
     def before_response_headers(self):
         qs = urlparse.parse_qs(self._request_context["parse"].query)
         
+        print "abcdefghiz"
         self._unregister(
-            qs["name"][0],
+            qs["port"][0],
         )
+        self._request_context["response"] = "unregistered"
 
-        self._request_context["response_headers"] = {
-            'Cache-Control': 'no-cache, no-store, must-revalidate', 
-            'Pragma': 'no-cache', 
-            'Expires': '0',
-            'Location': 'statistics',
-        }
         super(UnregisterService, self).before_response_headers()
 
     def _unregister(
@@ -53,4 +49,5 @@ class UnregisterService(base_service.BaseService):
                 name,
             )
         )
-        del self._application_context["registry"][name]
+        if name in self._application_context["registry"]:
+            del self._application_context["registry"][name]

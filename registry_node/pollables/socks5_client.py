@@ -81,31 +81,17 @@ class Socks5Client(base_socket.BaseSocket):
         }
 
     def on_read(self):
-        data = util.recieve_buffer(
-            self._socket,
-            self._app_context["max_buffer_size"] - len(self._partner.buffer),
+        data = encryption_util.decrypt(
+            util.recieve_buffer(
+                self._socket,
+                self._app_context["max_buffer_size"] - len(self._partner.buffer),
+            ),
+            self._path[str(self._connected_nodes)]["key"],
         )
+
         self._partner.buffer += data
         self._update_byte_counter(len(data))
 
-        # data = ""
-        # try:
-            # while not self._partner.full_buffer():
-                # data = self._socket.recv(
-                    # self._max_buffer_size - len(self._partner.buffer),
-                # )
-                # if not data:
-                    # raise util.DisconnectError()
-                    
-                # self._update_byte_counter(len(data))
-                # self._partner.buffer += data
-        # except socket.error as e:
-            # if e.errno not in (errno.EWOULDBLOCK, errno.EPIPE, errno.ECONNRESET, errno.ECONNABORTED):
-                # raise
-            # if e.errno != errno.EWOULDBLOCK:
-                # self.close_handler()
-        # if not self._partner.buffer:
-            # raise util.DisconnectError()
         try:
             if self._machine_current_state in (
                 constants.CLIENT_RECV_GREETING,

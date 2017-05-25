@@ -15,10 +15,10 @@ body {
     font-family: 'Open Sans', sans-serif;
     color: #A7A1AE;
     background-color: #1F2739;
-    /* background-image: url("logo_background.png"); */
-    /* background-repeat: no-repeat; */
-    /* background-attachment: fixed; */
-    /* background-position: center; */
+    background-image: url("logo_background.jpg");
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center;
 }
 
 .title {
@@ -56,6 +56,7 @@ h2 {
     overflow: hidden;
     width: 80%;
     margin: 0 auto;
+    background-color: #1F2739;
 }
 
 .table thead {

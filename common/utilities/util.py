@@ -102,6 +102,24 @@ def write_file(
         ]
 
 
+## Connect to socket asynchronously.
+def connect(
+    sock,
+    address,
+    port,
+):
+    try:
+        sock.connect(
+            (
+                address,
+                port,
+            )
+        )
+    except socket.error as e:
+        if e.errno not in (errno.EINPROGRESS, errno.EWOULDBLOCK):
+            raise
+
+
 ## Damonize process.
 #
 # 1. Forking process and closing parent.
@@ -137,22 +155,3 @@ def daemonize():
     child = os.fork()
     if child != 0:
         os._exit(0)
-
-
-## Validate ip address.
-# @param ip (str) address for validation.
-# @returns (bool) True if address is IP4.
-#
-def validate_ip(
-    ip,
-):
-    a = ip.split('.')
-    if len(a) != 4:
-        return False
-    for x in a:
-        if not x.isdigit():
-            return False
-        i = int(x)
-        if i < 0 or i > 255:
-            return False
-    return True
