@@ -55,7 +55,7 @@ class HttpServer(base_socket.BaseSocket):
 
         ## SERVICES dict for all supported services.
         self.SERVICES = {
-            service.NAME: service for service in base_service.BaseService.__subclasses__()
+            s.NAME: s for s in base_service.BaseService.__subclasses__()
         }
 
         self._reset()

@@ -3,15 +3,10 @@
 # Service for registering new nodes.
 #
 
-import base64
-import Cookie
-import datetime
-import os
 import urlparse
 import logging
 
-from common import constants
-from common.utilities import util
+from common.utilities import http_util
 from registry_node.services import base_service
 
 
@@ -31,7 +26,7 @@ class RegisterService(base_service.BaseService):
     def before_response_headers(self):
         try:
             qs = urlparse.parse_qs(self._request_context["parse"].query)
-            
+
             self._register(
                 qs["address"][0],
                 qs["port"][0],
@@ -48,6 +43,10 @@ class RegisterService(base_service.BaseService):
 
         super(RegisterService, self).before_response_headers()
 
+    ## Register node.
+    # If node with the same port exists -> return fail message.
+    # Add the address, port and key of node to registry.
+    #
     def _register(
         self,
         address,
@@ -55,13 +54,13 @@ class RegisterService(base_service.BaseService):
         key,
     ):
         if port in self._request_context["app_context"]["registry"]:
-            raise RuntimeError("Node with the same port already registered.")
-        logging.info(
-            "registring %s:%s" % (
-                address,
-                port,
+            logging.info(
+                "failed to add node %s:%s" % (
+                    address,
+                    port,
+                )
             )
-        )
+            raise RuntimeError("Node with the same port already registered.")
         self._request_context["app_context"]["registry"][port] = {
             "name": port,
             "address": address,

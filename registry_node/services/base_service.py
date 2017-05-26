@@ -3,9 +3,8 @@
 # Base class for all services.
 #
 
-import logging
-
 from common import constants
+
 
 ## Base Service.
 # Contains elementary functions for services to inherit and change.
@@ -31,7 +30,10 @@ class BaseService(object):
     ## Function called before receiving HTTP content.
     def before_request_content(self):
         self._request_context["content_length"] = int(
-            self._request_context["request_headers"].get(constants.CONTENT_LENGTH, "0")
+            self._request_context["request_headers"].get(
+                constants.CONTENT_LENGTH,
+                "0",
+            )
         )
 
     ## Function called during receiving HTTP content.
@@ -44,8 +46,12 @@ class BaseService(object):
 
     ## Function called before sending HTTP headers.
     def before_response_headers(self):
-        if constants.CONTENT_LENGTH not in self._request_context["response_headers"]:
-            self._request_context["response_headers"][constants.CONTENT_LENGTH] = len(
+        if constants.CONTENT_LENGTH not in self._request_context[
+            "response_headers"
+        ]:
+            self._request_context[
+                "response_headers"
+            ][constants.CONTENT_LENGTH] = len(
                 self._request_context["response"]
             )
 

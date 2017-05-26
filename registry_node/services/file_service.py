@@ -3,14 +3,9 @@
 # Service for openening a requested file.
 #
 
-import base64
-import Cookie
-import datetime
 import os
-import urlparse
 
 from common import constants
-from common.utilities import util
 from common.utilities import http_util
 from registry_node.services import base_service
 
@@ -36,13 +31,17 @@ class FileService(base_service.BaseService):
                 )
             )
             fd = os.open(file_name, os.O_RDONLY)
-            self._request_context["response_headers"][constants.CONTENT_LENGTH] = os.fstat(fd).st_size
-            self._request_context["response_headers"][constants.CONTENT_TYPE] = constants.MIME_MAPPING.get(
-                    os.path.splitext(
-                        file_name
-                    )[1].lstrip('.'),
-                    'application/octet-stream',
-                )
+            self._request_context[
+                "response_headers"
+            ][constants.CONTENT_LENGTH] = os.fstat(fd).st_size
+            self._request_context[
+                "response_headers"
+            ][constants.CONTENT_TYPE] = constants.MIME_MAPPING.get(
+                os.path.splitext(
+                    file_name
+                )[1].lstrip('.'),
+                'application/octet-stream',
+            )
             self._request_context["fd"] = fd
         except Exception as e:
             raise http_util.HTTPError(

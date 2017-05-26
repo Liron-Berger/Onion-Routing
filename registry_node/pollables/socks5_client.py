@@ -5,11 +5,6 @@
 # the browser.
 #
 
-import errno
-import logging
-import socket
-import traceback
-
 from common import constants
 from common.async import event_object
 from common.pollables import base_socket
@@ -22,7 +17,7 @@ from common.utilities import socks5_util
 #
 # Created for routing a message from a the client (browser) to destination.
 # Uses rfc 1928 - https://www.ietf.org/rfc/rfc1928.txt.
-# Establishes Socks5 with all other nodes in order to redirect the 
+# Establishes Socks5 with all other nodes in order to redirect the
 # messages from the browser to the last node which will finally
 # redirect it to the destination.
 #
@@ -30,7 +25,6 @@ class Socks5Client(base_socket.BaseSocket):
 
     ## Currently connected nodes from the path.
     _connected_nodes = 1
-    
 
     ## Constructor.
     # @param socket (socket) the wrapped socket.
@@ -43,7 +37,7 @@ class Socks5Client(base_socket.BaseSocket):
     #
     # Creates a wrapper for the given @ref _socket to be able to
     # read and write from it asynchronously using the right procedure for
-    # socks5 protocol as a client, sending socks5 request to a 
+    # socks5 protocol as a client, sending socks5 request to a
     # veriety of servers.
     #
     def __init__(
@@ -150,7 +144,7 @@ class Socks5Client(base_socket.BaseSocket):
             return False
         else:
             return True
-        
+
     ## Send connection request state.
     # @returns (bool) whether state is finished.
     #
@@ -181,13 +175,14 @@ class Socks5Client(base_socket.BaseSocket):
     #
     # Decodes the buffer to for content of response.
     # When response is positive update @ref _connected_nodes to the next node.
-    # Before establishing connection with the last node - make @ref _browser_socket
-    # @ref _partner to create a proxy between the last node and browser.
+    # Before establishing connection with the last node:
+    # - make @ref _partner to @ref _browser_socket in order to
+    # create a proxy between the last node and browser.
     # Next state:
     # - SEND_GREETING: establishing new connection with regular nodes.
     # - PARTNER_STATE: become a proxy - last node connection.
     # Continue when response is positive and supported.
-    # 
+    #
     def _client_recv_connection_request(self):
         response = socks5_util.Socks5Response.decode(self._buffer)
         if not (
@@ -201,8 +196,9 @@ class Socks5Client(base_socket.BaseSocket):
         else:
             self._connected_nodes += 1
             if self._connected_nodes == constants.OPTIMAL_NODES_IN_PATH:
-                print self._path[str(self._connected_nodes)]["key"]
-                self._state_machine[self._machine_current_state]["next"] = constants.PARTNER_STATE
+                self._state_machine[
+                    self._machine_current_state
+                ]["next"] = constants.PARTNER_STATE
                 self._partner = self._browser_socket
 
                 self._app_context["socket_data"][
@@ -215,7 +211,6 @@ class Socks5Client(base_socket.BaseSocket):
                     "bytes": 0,
                     "fd": self._partner.fileno(),
                 }
-                
             return True
 
     ## Partner state.
@@ -267,7 +262,9 @@ class Socks5Client(base_socket.BaseSocket):
         data = encryption_util.decrypt(
             util.recieve_buffer(
                 self._socket,
-                self._app_context["max_buffer_size"] - len(self._partner.buffer),
+                self._app_context[
+                    "max_buffer_size"
+                ] - len(self._partner.buffer),
             ),
             self._path[str(self._connected_nodes)]["key"],
         )
@@ -281,14 +278,16 @@ class Socks5Client(base_socket.BaseSocket):
                 constants.CLIENT_RECV_CONNECTION_REQUEST,
                 constants.PARTNER_STATE,
             ):
-                if self._state_machine[self._machine_current_state]["method"]():
+                if self._state_machine[
+                    self._machine_current_state
+                ]["method"]():
                     self._buffer = ""
-                    
+
                     self._machine_current_state = self._state_machine[
                         self._machine_current_state
                     ]["next"]
         except socks5_util.Socks5Error as e:
-            pass
+            raise e
 
     ## On write event.
     # Run the current state.
@@ -325,7 +324,7 @@ class Socks5Client(base_socket.BaseSocket):
     #
     def on_close(self):
         super(Socks5Client, self).on_close()
-        
+
         if self._partner != self._browser_socket:
             self._browser_socket.state = constants.CLOSING
 
@@ -333,7 +332,7 @@ class Socks5Client(base_socket.BaseSocket):
     # Closing @ref _socket.
     # Remove this connection from statistics.
     # If browser was not closed, close it.
-    #        
+    #
     def close(self):
         del self._app_context["connections"][self]
         super(Socks5Client, self).close()
@@ -361,7 +360,7 @@ class Socks5Client(base_socket.BaseSocket):
         ):
             event |= event_object.BaseEvent.POLLIN
         if (
-            self._machine_current_state in 
+            self._machine_current_state in
             (
                 constants.CLIENT_SEND_GREETING,
                 constants.CLIENT_SEND_CONNECTION_REQUEST,

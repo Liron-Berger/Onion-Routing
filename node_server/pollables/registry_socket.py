@@ -125,9 +125,8 @@ class RegistrySocket(base_socket.BaseSocket):
         if "success" in self._buffer:
             return True
         elif "fail" in self._buffer:
-            logging.info("failed to registry: error is %s" %
-                self._buffer,
-            )
+            logging.info("failed to registry: %s" % self._buffer)
+
             self._state = constants.CLOSING
             self._node.state = constants.CLOSING
         else:
