@@ -312,6 +312,7 @@ class Socks5Server(base_socket.BaseSocket):
     ## Get events for poller.
     # @retuns (int) events to register for poller.
     #
+    # On appropriate state:
     # - POLLIN when @ref _state is ACTIVE and @ref _buffer is not full.
     # - POLLOUT when @ref _buffer is not empty.
     #
