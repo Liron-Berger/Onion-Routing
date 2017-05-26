@@ -258,7 +258,6 @@ class HttpServer(base_socket.BaseSocket):
         ]["Content-Type"] = "text/plain"
         self._service_class = base_service.BaseService(
             self.request_context,
-            self._app_context,
         )
         self._machine_state = constants.SEND_STATUS
 
