@@ -1,4 +1,7 @@
 #!/usr/bin/python
+## @package onion_routing.registry_node.services.menu_service
+# Service for openening main menu when client connects.
+#
 
 import base64
 import Cookie
@@ -12,14 +15,23 @@ from common.utilities import http_util
 from registry_node.services import base_service
 
 
+## Menu Service.
+# Contains the right procedure for opening homepage.html when / service
+# is requested.
+#
 class MenuService(base_service.BaseService):
+
+    ## Service name
     NAME = "/"
 
+    ## Function called before receiving HTTP headers.
+    # Open homepage.html and add needed headers.
+    #
     def before_request_headers(self):
         try:
             file_name = os.path.normpath(
                 '%s%s' % (
-                    self._application_context["base"],
+                    self._request_context["app_context"]["base"],
                     "/homepage.html",
                 )
             )
@@ -39,8 +51,16 @@ class MenuService(base_service.BaseService):
                 message=str(e),
             )
 
+    ## Function called during sending HTTP content.
+    # @returns (str) Content of file.
+    #
     def response(self):
-        data = os.read(self._request_context["fd"], 100000 - len(self._request_context["response"]))
+        data = os.read(
+            self._request_context["fd"],
+            self._request_context[
+                "app_context"
+            ]["max_buffer_size"] - len(self._request_context["response"]),
+        )
         if not data:
             return None
         return data

@@ -48,7 +48,7 @@ class ServerNode(listener_socket.Listener):
         self.bind_port = bind_port
 
         ## Secret key for encryption.
-        self._key = random.randint(0, 256)
+        self._key = random.randint(0, 255)
 
         ## Registry socket, for registering and unregistring to the registry.
         self.registry_socket = registry_socket.RegistrySocket(

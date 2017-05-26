@@ -158,8 +158,8 @@ class Socks5Client(base_socket.BaseSocket):
     #
     def _client_send_connection_request(self):
         try:
-            address = self._path[str(self._connected_nodes)]["address"]
-            port = self._path[str(self._connected_nodes)]["port"]
+            address = self._path[str(self._connected_nodes + 1)]["address"]
+            port = self._path[str(self._connected_nodes + 1)]["port"]
 
             self._buffer = socks5_util.Socks5Request.encode(
                 {
@@ -201,6 +201,7 @@ class Socks5Client(base_socket.BaseSocket):
         else:
             self._connected_nodes += 1
             if self._connected_nodes == constants.OPTIMAL_NODES_IN_PATH:
+                print self._path[str(self._connected_nodes)]["key"]
                 self._state_machine[self._machine_current_state]["next"] = constants.PARTNER_STATE
                 self._partner = self._browser_socket
 

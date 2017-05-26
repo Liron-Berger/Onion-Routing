@@ -1,4 +1,7 @@
 #!/usr/bin/python
+## @package onion_routing.registry_node.services.register_service
+# Service for registering new nodes.
+#
 
 import base64
 import Cookie
@@ -12,23 +15,19 @@ from common.utilities import util
 from registry_node.services import base_service
 
 
+## Register Service.
+# Registering new nodes and adds them to registry on request.
+#
 class RegisterService(base_service.BaseService):
+
+    ## Service name
     NAME = "/register"
 
-    def __init__(
-        self,
-        request_context,
-        application_context,
-    ):
-        super(RegisterService, self).__init__(
-            request_context,
-            application_context,
-        )
-
-    def before_response_status(self):
-        self._request_context["code"] = 301
-        self._request_context["status"] = "Moved Permanently"
-
+    ## Function called before sending HTTP headers.
+    # Adds the recieved node to the registry.
+    # On success: returns success response.
+    # If failed: returns fail response.
+    #
     def before_response_headers(self):
         try:
             qs = urlparse.parse_qs(self._request_context["parse"].query)
@@ -40,15 +39,13 @@ class RegisterService(base_service.BaseService):
             )
 
             self._request_context["response"] = "success"
-        except Exception:
-            self._request_context["response"] = "fail"
-            
-        self._request_context["response_headers"] = {
-            'Cache-Control': 'no-cache, no-store, must-revalidate', 
-            'Pragma': 'no-cache', 
-            'Expires': '0',
-            'Location': 'statistics',
-        }
+        except Exception as e:
+            raise http_util.HTTPError(
+                code=500,
+                status="Internal Error",
+                message="fail: " + str(e),
+            )
+
         super(RegisterService, self).before_response_headers()
 
     def _register(
@@ -57,13 +54,15 @@ class RegisterService(base_service.BaseService):
         port,
         key,
     ):
+        if port in self._request_context["app_context"]["registry"]:
+            raise RuntimeError("Node with the same port already registered.")
         logging.info(
             "registring %s:%s" % (
                 address,
                 port,
             )
         )
-        self._application_context["registry"][port] = {
+        self._request_context["app_context"]["registry"][port] = {
             "name": port,
             "address": address,
             "port": int(port),

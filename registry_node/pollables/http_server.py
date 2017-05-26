@@ -117,7 +117,6 @@ class HttpServer(base_socket.BaseSocket):
                 file_service.FileService,
             )(
                 self.request_context,
-                self._app_context,
             )
             logging.info("service %s requested" % (self._service_class.NAME))
         except KeyError:
@@ -230,6 +229,7 @@ class HttpServer(base_socket.BaseSocket):
     #
     def _reset(self):
         self.request_context = {
+            "app_context": self._app_context,
             "uri": "",
             "parse": "",
             "code": 200,
@@ -238,7 +238,6 @@ class HttpServer(base_socket.BaseSocket):
             "response_headers": {},
             "response": "",
             "content": "",
-            "app_context": self._app_context,
         }
         self._buffer = ""
         self._service_class = None

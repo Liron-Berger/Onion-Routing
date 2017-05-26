@@ -14,29 +14,17 @@ from registry_node.services import base_service
 class DisconnectService(base_service.BaseService):
     NAME = "/disconnect"
 
-    def __init__(
-        self,
-        request_context,
-        application_context,
-    ):
-        super(DisconnectService, self).__init__(
-            request_context,
-            application_context,
-        )
-
     def before_response_status(self):
         self._request_context["code"] = 301
         self._request_context["status"] = "Moved Permanently"
 
     def before_response_headers(self):
         qs = urlparse.parse_qs(self._request_context["parse"].query)
-        entry = self._application_context["socket_data"].get(
+        entry = self._request_context["app_context"]["socket_data"].get(
             int(qs["connection"][0]),
         )
-        if entry in self._application_context["connections"]:
-            entry.state = constants.CLOSING
-            entry.partner.state = constants.CLOSING
-        self._request_context["response"] = '<a href="statistics">Back to Statistics</a>'
+        if entry in self._request_context["app_context"]["connections"]:
+            entry.on_close()
 
         self._request_context["response_headers"] = {
             'Cache-Control': 'no-cache, no-store, must-revalidate', 
