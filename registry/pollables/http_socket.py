@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.registry.pollables.http_server
+## @package onion_routing.registry.pollables.http_socket
 # Implementation of HTTP server which supports certain
 # @ref node_server.services.
 #
@@ -15,7 +15,7 @@ from registry.services import base_service
 from registry.services import file_service
 
 
-## Http Server.
+## Http Socket.
 class HttpSocket(tcp_socket.TCPSocket):
 
     ## Request context.

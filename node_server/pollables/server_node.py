@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.node_server.pollables.node
+## @package onion_routing.node_server.pollables.server_node
 # Regular nodes used for anonymizing communications.
 #
 
