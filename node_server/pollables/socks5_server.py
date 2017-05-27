@@ -12,8 +12,8 @@ from common.async import event_object
 from common.utilities import encryption_util
 from common.utilities import socks5_util
 from common.utilities import util
-
 from common.pollables import tcp_socket
+from common.pollables import proxy_socket
 
 
 ## Socks5 Server.
@@ -200,7 +200,7 @@ class Socks5Server(tcp_socket.TCPSocket):
     # @param address (str) connect address.
     # @param port (int) connect port.
     #
-    # - Create a new partner socket - @ref common.pollables.TCPSocket.
+    # - Create a new partner socket - @ref common.pollables.ProxySocket.
     # - Connect the partner to address:port which were recieved from
     # the client.
     # - set @ref _partner = partner.
@@ -224,7 +224,7 @@ class Socks5Server(tcp_socket.TCPSocket):
         try:
             partner = None
 
-            partner = tcp_socket.TCPSocket(
+            partner = proxy_socket.ProxySocket(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM),
                 constants.ACTIVE,
                 self._request_context["app_context"],

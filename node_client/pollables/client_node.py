@@ -9,7 +9,7 @@ import socket
 import traceback
 
 from common import constants
-from common.pollables import tcp_socket
+from common.pollables import proxy_socket
 from common.pollables import listener_socket
 from common.pollables import http_client
 from node_client.pollables import socks5_client
@@ -65,7 +65,7 @@ class ClientNode(listener_socket.Listener):
     ## On read event.
     # - Gets connected nodes from registry.
     # - Accept new connection.
-    # - Create new @ref common.pollables.tcp_socket from the accepted socket
+    # - Create new @ref common.pollables.proxy_socket from the accepted socket
     # as browser socket.
     # - Create new @ref node_client.pollables.socks5_client for establishing
     # socks5 with other nodes as socks5_c.
@@ -81,7 +81,7 @@ class ClientNode(listener_socket.Listener):
 
             client, addr = self._socket.accept()
 
-            browser_socket = tcp_socket.TCPSocket(
+            browser_socket = proxy_socket.ProxySocket(
                 socket=client,
                 state=constants.ACTIVE,
                 app_context=self._app_context,

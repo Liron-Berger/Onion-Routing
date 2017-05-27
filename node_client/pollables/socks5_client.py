@@ -321,7 +321,7 @@ class Socks5Client(tcp_socket.TCPSocket):
 
     ## On close event.
     # Change @ref _state of socket to CLOSING and empty @ref _buffer.
-    # If TCPSocket is proxy run on_close on @ref _partner.
+    # If serves as proxy run on_close on @ref _partner.
     # If browser was not closed, change it state to CLOSING
     #
     def on_close(self):
@@ -330,7 +330,7 @@ class Socks5Client(tcp_socket.TCPSocket):
         if self._partner != self._browser_socket:
             self._browser_socket.state = constants.CLOSING
 
-    ## Close TCPSocket.
+    ## Close Socks5Client.
     # Closing @ref _socket.
     # Remove this connection from statistics.
     # If browser was not closed, close it.
