@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.registry_node.pollables.socks5_client
+## @package onion_routing.node_client.pollables.socks5_client
 # Socks5 client socket, responsible for establishing connections to all other
 # nodes, and later serves as proxy for encrypting all communication with
 # the browser.

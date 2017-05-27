@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.registry_node.services.menu_service
+## @package onion_routing.registry.services.menu_service
 # Service for openening main menu when client connects.
 #
 
@@ -7,7 +7,7 @@ import os
 
 from common import constants
 from common.utilities import http_util
-from registry_node.services import base_service
+from registry.services import base_service
 
 
 ## Menu Service.

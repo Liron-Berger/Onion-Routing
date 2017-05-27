@@ -28,7 +28,6 @@ function parseXML(xml) {
                 '<th> Socket Type </th>' +
                 '<th> Socket File Descriptor </th>' +
                 '<th> Bytes </th>' +
-                '<th> </th>' +
             '</tr>' +
         '</thead>' +
         '<tbody>'
@@ -42,11 +41,6 @@ function parseXML(xml) {
                 '<td> server </td>' +
                 '<td>' + x[i].getElementsByTagName("server")[0].childNodes[0].nodeValue + '</td>' +
                 '<td>' + x[i].getElementsByTagName("in")[0].childNodes[0].nodeValue + '</td>' +
-                '<td class="center" rowspan="2">' +
-                    '<button type="button" onclick="location.href=\'/disconnect?connection=' + x[i].getElementsByTagName("num")[0].childNodes[0].nodeValue + '\';">' +
-                    '    Disconnect' +
-                    '</button>' +
-                '</td>' +
             '</tr>' +
             '<tr>' +
                 '<td> partner </td>' +

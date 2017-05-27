@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.registry_node.services.register_service
+## @package onion_routing.registry.services.register_service
 # Service for registering new nodes.
 #
 
@@ -7,7 +7,7 @@ import urlparse
 import logging
 
 from common.utilities import http_util
-from registry_node.services import base_service
+from registry.services import base_service
 
 
 ## Register Service.
@@ -73,3 +73,5 @@ class RegisterService(base_service.BaseService):
                 port,
             )
         )
+        self._request_context["app_context"]["nodes"][port] = address
+        self._request_context["app_context"]["xml"].update()

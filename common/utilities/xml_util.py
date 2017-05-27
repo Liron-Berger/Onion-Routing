@@ -19,18 +19,21 @@ class XmlHandler(object):
 
     ## Constructor.
     # @param path (str) path for the xml file.
-    # @param connections (dict) data about all connections.
+    # @param data (dict) dict with all data to store in xml.
+    # @param type
     #
     # Creates new xml file.
     #
     def __init__(
         self,
         path,
-        connections,
+        data,
+        type,
     ):
         self._path = path
         self._fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o666)
-        self._connections = connections
+        self._data = data
+        self._type = type
 
     ## Close xml file.
     # deletes the existing file.
@@ -41,11 +44,18 @@ class XmlHandler(object):
 
     ## Update xml.
     # Deletes previous contents of the file.
-    # Goes over the connections and builds a new file.
+    # Goes over the data and builds a new file.
     #
-    def update(
-        self,
-    ):
+    def update(self):
+        if self._type == constants.XML_CONNECTIONS:
+            self._connections()
+        elif self._type == constants.XML_NODES:
+            self._nodes()
+        else:
+            raise RuntimeError("type not supprted, something wrong with xml.")
+
+    ## Connections XML update.
+    def _connections(self):
         os.lseek(self._fd, 0, os.SEEK_SET)
         util.write_file(
             self._fd,
@@ -55,20 +65,49 @@ class XmlHandler(object):
 
         connections = ""
         try:
-            for c in self._connections:
+            for c in self._data:
                 connections += constants.XML_CONNECTION_BLOCK_LAYOUT % (
                     c.fileno(),
-                    self._connections[c]["in"]["fd"],
-                    self._connections[c]["in"]["bytes"],
-                    self._connections[c]["out"]["fd"],
-                    self._connections[c]["out"]["bytes"],
+                    self._data[c]["in"]["fd"],
+                    self._data[c]["in"]["bytes"],
+                    self._data[c]["out"]["fd"],
+                    self._data[c]["out"]["bytes"],
                 )
         except Exception:
             logging.error(traceback.format_exc())
 
-        xml = constants.XML_LAYOUT % (
-            len(self._connections),
+        xml = constants.XML_CONNECTION_LAYOUT % (
+            len(self._data),
             connections,
+        )
+
+        util.write_file(
+            self._fd,
+            xml,
+        )
+
+    ## Nodes XML update.
+    def _nodes(self):
+        os.lseek(self._fd, 0, os.SEEK_SET)
+        util.write_file(
+            self._fd,
+            " " * os.stat(self._path).st_size,
+        )
+        os.lseek(self._fd, 0, os.SEEK_SET)
+
+        nodes = ""
+        try:
+            for port in self._data:
+                nodes += constants.XML_NODES_BLOCK_LAYOUT % (
+                    self._data[port],
+                    port,
+                )
+        except Exception:
+            logging.error(traceback.format_exc())
+
+        xml = constants.XML_NODES_LAYOUT % (
+            len(self._data),
+            nodes,
         )
 
         util.write_file(

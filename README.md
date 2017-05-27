@@ -39,13 +39,17 @@ Reach the parent folder of this project:
 ```
 cd [location of onion_routing]
 ```
-Running Registry and the first node:
+Running Registry:
 ```
-python -m registry_node [args]
+python -m registry [args]
 ```
-Running Node:
+Running Regular Node:
 ```
 python -m node_server [args]
+```
+Running The first node:
+```
+python -m node_client [args]
 ```
 
 ### Arguments
@@ -67,7 +71,7 @@ type:
 ```
 This will open the main page where statistics about the program may be seen.
 
-Note: Unless registry_node is running GUI won't work as it uses the registry (HTTP server).
+Note: Unless registry is running GUI won't work as it uses the HTTP server.
 
 
 ## Authors

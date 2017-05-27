@@ -1,7 +1,6 @@
 #!/usr/bin/python
-## @package onion_routing.registry_node.__main__
-# Regisry node. using http server as registry and
-# socks5 client node as the first node in the chain.
+## @package onion_routing.registry.__main__
+# Regisry node. using http server as registry.
 #
 
 import argparse
@@ -15,8 +14,7 @@ from common.async import event_object
 from common.pollables import listener_socket
 from common.utilities import util
 from common.utilities import xml_util
-from registry_node.pollables import client_node
-from registry_node.pollables import http_socket
+from registry.pollables import http_socket
 
 
 ## Poll events dict.
@@ -107,25 +105,21 @@ def __main__():
         "base": args.base,
 
         "registry": {},
-        "connections": {},
+        "nodes": {},
     }
 
     xml = xml_util.XmlHandler(
-        config.get("xmlFile", "path"),
-        application_context["connections"],
+        config.get("nodesFile", "path"),
+        application_context["nodes"],
+        type=constants.XML_NODES,
     )
+    application_context["xml"] = xml
 
     def exit_handler(signal, frame):
         server.close_server()
-        xml.close()
-
-    def alarm_handler(signum, frame):
-        xml.update()
-        signal.alarm(constants.XML_TIME_UPDATE)
 
     signal.signal(signal.SIGINT, exit_handler)
     signal.signal(signal.SIGTERM, exit_handler)
-    signal.signal(signal.SIGALRM, alarm_handler)
 
     server = async_server.AsyncServer(
         application_context,
@@ -138,15 +132,8 @@ def __main__():
         listener_type=http_socket.HttpSocket,
     )
 
-    server.add_listener(
-        client_node.ClientNode,
-        config.get("ClientNode", "bind.address"),
-        config.getint("ClientNode", "bind.port"),
-    )
-
     logging.info("Starting the async server...")
 
-    signal.alarm(constants.XML_TIME_UPDATE)
     server.run()
 
     logging.info(

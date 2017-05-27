@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.common.services.base_service
+## @package onion_routing.registry.services.base_service
 # Base class for all services.
 #
 

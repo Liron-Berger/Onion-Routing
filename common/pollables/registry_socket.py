@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.node_server.pollables.registry_socket
+## @package onion_routing.common.pollables.registry_socket
 # Socket class for sending register and unregister requests for new nodes.
 #
 
@@ -13,7 +13,7 @@ from common.utilities import util
 
 ## Registring socket.
 #
-# Created when a new @ref node_server.pollables.server_node is opened.
+# Created when a new node is opened.
 # Sends register request to the registry.
 # Once node is closed, sends an unregister request to the registry.
 #
@@ -34,13 +34,17 @@ class RegistrySocket(tcp_socket.TCPSocket):
         "GET /unregister?port=%s HTTP/1.1\r\n\r\n"
     )
 
+    NODES_REQUEST = (
+        "GET /nodes HTTP/1.1\r\n\r\n"
+    )
+
     ## Constructor.
     # @param socket (socket) the wrapped socket.
     # @param state (int) state of TCPSocket.
     # @param app_context (dict) application context.
     # @param connect_address (str) the address of the registry.
     # @param connect_port (int) the port of the registry.
-    # @param node (@ref node_server.pollables.server_node) node instance.
+    # @param node (node) node instance.
     #
     # Creates a state machine, which is responsible to send the proper requests
     # to the registry, until finally terminating itself.
@@ -72,7 +76,7 @@ class RegistrySocket(tcp_socket.TCPSocket):
         ## Machine current state.
         self._machine_state = constants.SEND_REGISTER
 
-        ## @ref node_server.pollables.server_node instance that is registering.
+        ## node instance that is registering.
         self._node = node
 
     ## Create the state machine for socket.
@@ -98,6 +102,14 @@ class RegistrySocket(tcp_socket.TCPSocket):
             },
             constants.UNREGISTERED: {
                 "method": None,
+                "next": None,
+            },
+            constants.SEND_NODES: {
+                "method": self._send_nodes,
+                "next": constants.RECV_NODES,
+            },
+            constants.RECV_NODES: {
+                "method": self._recv_nodes,
                 "next": None,
             },
         }
@@ -154,6 +166,32 @@ class RegistrySocket(tcp_socket.TCPSocket):
         else:
             return False
 
+    ## Send nodes request.
+    # Sending nodes request to Registry to retrieve connected nodes.
+    # @returns (bool) whether sending is finished.
+    #
+    def _send_nodes(self):
+        self._buffer = RegistrySocket.NODES_REQUEST
+        super(RegistrySocket, self).on_write()
+        return True
+
+    ## Recv unregister request.
+    # Recieving dictionary of all nodes from registry and storing it in app_context.
+    # @returns (bool) whether nodes finished reading and converted string to dict.
+    #
+    def _recv_nodes(self):
+        if "finished" in self._buffer:
+            import ast
+            self._request_context["app_context"]["registry"] = ast.literal_eval(self._buffer[39:self._buffer.find("finished")])
+            self._buffer = self._buffer[self._buffer.find("finished"):]
+            return True
+        else:
+            return False
+
+    ## Change @ref _machine_state to SEND_NODE.
+    def get_nodes(self):
+        self._machine_state = constants.SEND_NODES
+
     ## Change @ref _machine_state to SEND_UNREGISTER.
     def unregister(self):
         self._machine_state = constants.SEND_UNREGISTER
@@ -192,11 +230,13 @@ class RegistrySocket(tcp_socket.TCPSocket):
         if self._machine_state in (
             constants.RECV_REGISTER,
             constants.RECV_UNREGISTER,
+            constants.RECV_NODES,
         ):
             event |= event_object.BaseEvent.POLLIN
         if self._machine_state in (
             constants.SEND_REGISTER,
             constants.SEND_UNREGISTER,
+            constants.SEND_NODES,
         ):
             event |= event_object.BaseEvent.POLLOUT
         return event

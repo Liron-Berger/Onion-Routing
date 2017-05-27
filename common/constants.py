@@ -20,11 +20,12 @@ DEFAULT_CONNECTIONS_NUMBER = 10
 DEFAULT_BUFFER_SIZE = 1024
 
 
-## Path of registry node config file.
-REGISTRY_NODE_CONFIG = "registry_node/config.ini"
+## Path of registry config file.
+REGISTRY_NODE_CONFIG = "registry/config.ini"
 ## Path of node server config file.
 NODE_SERVER_CONFIG = "node_server/config.ini"
-
+## Path of node client config file.
+NODE_SERVER_CONFIG = "node_client/config.ini"
 
 ## The number of nodes in path to anonymize message.
 OPTIMAL_NODES_IN_PATH = 3
@@ -45,7 +46,7 @@ ASYNC_SERVER_STATES = (
 ) = range(3)
 
 
-## Socks5 socket states for @ref registry_node.pollables.socks5_client and
+## Socks5 socket states for @ref node_client.pollables.socks5_client and
 ##      @ref node_server.pollables.socks5_server.
 # - RECV_GREETING: Recieve socks5 greeting from client.
 # - SEND_GREETING: Send response for socks5 greeting to client.
@@ -72,7 +73,7 @@ SOCKS5_STATES = (
 ) = range(9)
 
 
-## HTTP socket states for @ref registry_node.pollables.http_socket.
+## HTTP socket states for @ref registry.pollables.http_socket.
 # - RECV_STATUS: Recieve status of HTTP request.
 # - RECV_HEADERS: Recv headers of HTTP request.
 # - RECV_CONTENT: Recieve content of HTTP request.
@@ -99,6 +100,8 @@ HTTP_STATES = (
 # - RECV_UNREGISTER: Recieving response for unregister request.
 # - WAITING: Sleeping state.
 # - UNREGISTERED: Node unregistered state.
+# - SEND_NODES: Sending a request to get connect nodes to registry.
+# - RECV_NODES: Recieving string representation of nodes dict.
 #
 REGISTRY_STATES = (
     SEND_REGISTER,
@@ -107,7 +110,9 @@ REGISTRY_STATES = (
     RECV_UNREGISTER,
     WAITING,
     UNREGISTERED,
-) = range(6)
+    SEND_NODES,
+    RECV_NODES,
+) = range(8)
 
 
 ## Socks5 supported version.
@@ -190,18 +195,23 @@ MIME_MAPPING = {
     "css": "text/css",
 }
 
-## Paths of all special services for @ref registry_node.pollables.http_socket.
+## Paths of all special services for @ref registry.pollables.http_socket.
 SERVICES = [
-    "registry_node.services.disconnect_service",
-    "registry_node.services.register_service",
-    "registry_node.services.register_service",
-    "registry_node.services.unregister_service",
-    "registry_node.services.menu_service",
+    "registry.services.register_service",
+    "registry.services.register_service",
+    "registry.services.unregister_service",
+    "registry.services.menu_service",
+    "registry.services.nodes_service",
 ]
 
 
+## XML Connection type.
+XML_CONNECTIONS = 0
+## XML Nodes type.
+XML_NODES = 1
+
 ## Basic layout for xml file.
-XML_LAYOUT = (
+XML_CONNECTION_LAYOUT = (
     "<Statistics>"
     "<connection_number>%s</connection_number>"
     "%s"
@@ -217,4 +227,20 @@ XML_CONNECTION_BLOCK_LAYOUT = (
     "<partner>%s</partner>"
     "<out>%s</out>"
     "</connection>"
+)
+
+## Basic layout for xml file.
+XML_NODES_LAYOUT = (
+    "<Statistics>"
+    "<nodes_number>%s</nodes_number>"
+    "%s"
+    "</Statistics>"
+)
+
+## Layout of every statistics block of each connection.
+XML_NODES_BLOCK_LAYOUT = (
+    "<node>"
+    "<address>%s</address>"
+    "<port>%s</port>"
+    "</node>"
 )

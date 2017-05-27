@@ -57,6 +57,7 @@ h2 {
     width: 80%;
     margin: 0 auto;
     background-color: #1F2739;
+    margin-bottom: 100px;
 }
 
 .table thead {
@@ -168,13 +169,16 @@ h2 {
 
 a.animated-button:link, a.animated-button:visited {
 	position: relative;
+    margin-bottom: 50px;
+    width: 300px;
 	display: block;
 	padding: 14px 15px;
 	color: #fff;
 	font-size:14px;
 	font-weight: bold;
 	text-align: center;
-    border: 2px solid #65b37a;
+    margin-left: auto;
+    margin-right: auto;
 }
 a.animated-button:link:after, a.animated-button:visited:after {
 	content: "";
@@ -204,7 +208,6 @@ a.animated-button:link, a.animated-button:visited {
 }
 
 a.animated-button:after {
-	background: #65b37a;
 	opacity: .5;
 	-moz-transform: translateX(-50%) translateY(-50%);
 	-ms-transform: translateX(-50%) translateY(-50%);
@@ -214,6 +217,20 @@ a.animated-button:after {
 a.animated-button:hover:after {
 	height: 140%;
 	opacity: 1;
+}
+
+a.animated-button.entry:link, a.animated-button.entry:visited {
+    border: 2px solid #65b37a;
+}
+a.animated-button.entry:after {
+	background: #65b37a;
+}
+
+a.animated-button.unregister:link, a.animated-button.unregister:visited {
+    border: 2px solid #c20000;
+}
+a.animated-button.unregister:after {
+	background: #c20000;
 }
 
 

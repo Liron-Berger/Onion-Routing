@@ -4,7 +4,9 @@
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
-    <title>Onion Routing - Home Page</title>
+    <script type="text/javascript" src="nodes_xml_script.js"></script>
+
+    <title>Onion Routing - Nodes</title>
 </head>
 
 
@@ -33,14 +35,19 @@
         </a>
     </div>
 
-    <h1>Statistics</h1>
-    <h2 id="node_number">Nodes: 0</h2>
+    <h1>Nodes</h1>
+    <h2 id="nodes_number">Counter: 0</h2>
+    <h2 id="nodes_number">Click on any node to unregister...</h2>
 
-    <table id="demo" class="table"></table>
+    <p id="demo"></p>
 
     <div class="footer">
         <i class="fa fa-copyright"></i>
        	Onion Routing - Project by Liron Berger 
     </div>
+
+    <script>
+        loadXMLDoc()
+    </script>
 </body>
 </html>

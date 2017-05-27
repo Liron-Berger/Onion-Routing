@@ -10,7 +10,7 @@ import traceback
 
 from common import constants
 from common.pollables import listener_socket
-from node_server.pollables import registry_socket
+from common.pollables import registry_socket
 from node_server.pollables import socks5_server
 
 

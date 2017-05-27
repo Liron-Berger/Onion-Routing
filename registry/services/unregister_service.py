@@ -1,12 +1,12 @@
 #!/usr/bin/python
-## @package onion_routing.registry_node.services.unregister_service
+## @package onion_routing.registry.services.unregister_service
 # Service for unregistering new nodes.
 #
 
 import urlparse
 import logging
 
-from registry_node.services import base_service
+from registry.services import base_service
 
 
 ## Unregister Service.
@@ -16,6 +16,14 @@ class UnregisterService(base_service.BaseService):
 
     ## Service name
     NAME = "/unregister"
+
+    ## Function called before sending HTTP status.
+    # Changes status to redirect to go back to previous page.
+    #
+    def before_response_status(self):
+        self._request_context["code"] = 301
+        self._request_context["status"] = "Moved Permanently"
+
 
     ## Function called before sending HTTP headers.
     # Removes the recieved node from the registry.
@@ -27,6 +35,13 @@ class UnregisterService(base_service.BaseService):
             qs["port"][0],
         )
         self._request_context["response"] = "unregistered"
+
+        self._request_context["response_headers"] = {
+            'Cache-Control': 'no-cache, no-store, must-revalidate', 
+            'Pragma': 'no-cache', 
+            'Expires': '0',
+            'Location': 'nodes.html',
+        }
 
         super(UnregisterService, self).before_response_headers()
 
@@ -44,3 +59,9 @@ class UnregisterService(base_service.BaseService):
         )
         if name in self._request_context["app_context"]["registry"]:
             del self._request_context["app_context"]["registry"][name]
+
+            del self._request_context["app_context"]["nodes"][name]
+            self._request_context["app_context"]["xml"].update()
+        else:
+            logging.info("node was not in registry...")
+

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.registry_node.pollables.http_socket
+## @package onion_routing.registry.pollables.http_server
 # Implementation of HTTP server which supports certain
 # @ref node_server.services.
 #
@@ -11,8 +11,8 @@ from common import constants
 from common.async import event_object
 from common.pollables import tcp_socket
 from common.utilities import http_util
-from registry_node.services import base_service
-from registry_node.services import file_service
+from registry.services import base_service
+from registry.services import file_service
 
 
 ## Http Server.
@@ -118,7 +118,7 @@ class HttpSocket(tcp_socket.TCPSocket):
             )(
                 self._request_context,
             )
-            logging.info("service %s requested" % (self._service_class.NAME))
+            logging.debug("service %s requested" % (self._service_class.NAME))
         except KeyError:
             raise http_util.HTTPError(
                 code=500,
@@ -222,21 +222,24 @@ class HttpSocket(tcp_socket.TCPSocket):
             super(HttpSocket, self).on_write()
             return False
 
-    ## Reset __request_context.
+    ## Reset _request_context.
     # Empty all request fields of previous request.
     # Empty _buffer.
     # Empty _service_class.
     #
     def _reset(self):
-        self._request_context["uri"] = ""
-        self._request_context["parse"] = ""
-        self._request_context["code"] = 200
-        self._request_context["status"] = "OK"
-        self._request_context["request_headers"] = {}
-        self._request_context["response_headers"] = {}
-        self._request_context["response"] = ""
-        self._request_context["content"] = ""
-
+        a = self._request_context["app_context"]
+        self._request_context = {
+            "app_context": a,
+            "uri": "",
+            "parse": "",
+            "code": 200,
+            "status": "OK",
+            "request_headers": {},
+            "response_headers": {},
+            "response": "",
+            "content": "",
+        }
         self._buffer = ""
         self._service_class = None
 

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.registry_node.pollables.client_node
+## @package onion_routing.node_client.pollables.client_node
 # Client node which is used as the first node to which browser connects.
 #
 
@@ -11,7 +11,8 @@ import traceback
 from common import constants
 from common.pollables import tcp_socket
 from common.pollables import listener_socket
-from registry_node.pollables import socks5_client
+from common.pollables import registry_socket
+from node_client.pollables import socks5_client
 
 
 ## Client Node.
@@ -42,17 +43,38 @@ class ClientNode(listener_socket.Listener):
             listener_type,
         )
 
+        ## Bind address of node.
+        self.bind_address = bind_address
+
+        ## Bind port of node.
+        self.bind_port = bind_port
+
+        ## Secret key for encryption.
+        self._key = random.randint(0, 255)
+
+        ## Registry socket, for registering and unregistring to the registry.
+        self.registry_socket = registry_socket.RegistrySocket(
+            socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+            state=constants.ACTIVE,
+            app_context=app_context,
+            connect_address=app_context["http_address"],
+            connect_port=app_context["http_port"],
+            node=self,
+        )
+
     ## On read event.
+    # - Gets connected nodes from registry.
     # - Accept new connection.
     # - Create new @ref common.pollables.tcp_socket from the accepted socket
     # as browser socket.
-    # - Create new @ref registry_node.pollables.socks5_client for establishing
+    # - Create new @ref node_client.pollables.socks5_client for establishing
     # socks5 with other nodes as socks5_c.
     # - Get Nodes from registry and choose a random path for anonymization.
     # - Set browser_socket partner to socks5_c.
     # - Add socks5_c to @ref common.async.async_server._socket_data.
     #
     def on_read(self):
+        self.registry_socket.get_nodes()
         try:
             browser_socket = None
             socks5_c = None
@@ -88,37 +110,42 @@ class ClientNode(listener_socket.Listener):
     ## Create path.
     # @returns (dict) Three random nodes from registry.
     # Chooses three random nodes from registry unless there aren't enough
-    # nodes. In that case some nodes might repeat, or if there are nodes
+    # nodes. In that case some nodes might repeat, or if there are no nodes
     # an error is raised.
     #
     def _create_path(self):
-        if not self._app_context["registry"]:
-            raise RuntimeError(
-                "Not Enough nodes registered, at least one is required",
-            )
+        available_nodes = []
+        for name in self._app_context["registry"]:
+            if self._app_context["registry"][name]["name"] != str(self.bind_port):
+                available_nodes.append(self._app_context["registry"][name])
 
-        chosen_nodes = random.sample(
-            self._app_context["registry"].values(),
-            min(
-                len(self._app_context["registry"]),
-                constants.OPTIMAL_NODES_IN_PATH,
-            ),
-        )
+        if not available_nodes:
+            raise RuntimeError("Not Enough nodes registered, at least one more is required")
+        
+        if len(available_nodes) >= constants.OPTIMAL_NODES_IN_PATH:
+            chosen_nodes = random.sample(available_nodes, constants.OPTIMAL_NODES_IN_PATH)
 
-        while len(chosen_nodes) < constants.OPTIMAL_NODES_IN_PATH:
-            chosen_nodes += random.sample(
-                self._app_context["registry"].values(),
-                min(
-                    len(self._app_context["registry"]),
-                    constants.OPTIMAL_NODES_IN_PATH - len(chosen_nodes),
-                ),
-            )
+        else:
+            chosen_nodes = random.sample(available_nodes, len(available_nodes))
+
+            while len(chosen_nodes) < constants.OPTIMAL_NODES_IN_PATH:
+                chosen_nodes += random.sample(
+                    available_nodes,
+                    min(len(available_nodes), constants.OPTIMAL_NODES_IN_PATH - len(chosen_nodes))
+                )
 
         path = {}
         for i in range(len(chosen_nodes)):
             path[str(i + 1)] = chosen_nodes[i]
-
         return path
+
+    ## Close Node.
+    # Closing @ref _socket.
+    # Entering unregister state in @ref registry_socket.
+    #
+    def close(self):
+        self._socket.close()
+        self.registry_socket.unregister()
 
     ## Retrive @ref _key.
     @property
@@ -127,6 +154,9 @@ class ClientNode(listener_socket.Listener):
 
     ## String representation.
     def __repr__(self):
-        return "ServerNode object. fd: %s" % (
+        return "ClientNode object. address %s, port %s. fd: %s" % (
+            self.bind_address,
+            self.bind_port,
             self.fileno(),
         )
+
