@@ -116,22 +116,35 @@ class ClientNode(listener_socket.Listener):
     def _create_path(self):
         available_nodes = []
         for name in self._app_context["registry"]:
-            if self._app_context["registry"][name]["name"] != str(self.bind_port):
+            if self._app_context[
+                "registry"
+            ][name]["name"] != str(self.bind_port):
                 available_nodes.append(self._app_context["registry"][name])
 
         if not available_nodes:
-            raise RuntimeError("Not Enough nodes registered, at least one more is required")
-        
+            raise RuntimeError(
+                "Not Enough nodes registered, at least one more is required",
+            )
+
         if len(available_nodes) >= constants.OPTIMAL_NODES_IN_PATH:
-            chosen_nodes = random.sample(available_nodes, constants.OPTIMAL_NODES_IN_PATH)
+            chosen_nodes = random.sample(
+                available_nodes,
+                constants.OPTIMAL_NODES_IN_PATH,
+            )
 
         else:
-            chosen_nodes = random.sample(available_nodes, len(available_nodes))
+            chosen_nodes = random.sample(
+                available_nodes,
+                len(available_nodes),
+            )
 
             while len(chosen_nodes) < constants.OPTIMAL_NODES_IN_PATH:
                 chosen_nodes += random.sample(
                     available_nodes,
-                    min(len(available_nodes), constants.OPTIMAL_NODES_IN_PATH - len(chosen_nodes))
+                    min(
+                        len(available_nodes),
+                        constants.OPTIMAL_NODES_IN_PATH - len(chosen_nodes),
+                    ),
                 )
 
         path = {}
@@ -159,4 +172,3 @@ class ClientNode(listener_socket.Listener):
             self.bind_port,
             self.fileno(),
         )
-

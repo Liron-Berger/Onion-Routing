@@ -1,31 +1,28 @@
 #!/usr/bin/python
-## @package onion_routing.registry.services.register_service
+## @package onion_routing.registry.services.nodes_service
 # Service for registering new nodes.
 #
-
-import urlparse
-import logging
 
 from common.utilities import http_util
 from registry.services import base_service
 
 
-## Register Service.
-# Registering new nodes and adds them to registry on request.
+## Nodes Service.
+# Sending all connected nodes to the requesting client.
 #
 class NodesService(base_service.BaseService):
 
-    ## Service name
+    ## Service name.
     NAME = "/nodes"
 
     ## Function called before sending HTTP headers.
-    # Adds the recieved node to the registry.
-    # On success: returns success response.
-    # If failed: returns fail response.
+    # Send string representation of registry.
     #
     def before_response_headers(self):
         try:
-            self._request_context["response"] = str(self._request_context["app_context"]["registry"]) + "finished"
+            self._request_context["response"] = str(
+                self._request_context["app_context"]["registry"],
+            )
         except Exception as e:
             raise http_util.HTTPError(
                 code=500,

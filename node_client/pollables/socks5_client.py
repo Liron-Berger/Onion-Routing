@@ -248,7 +248,9 @@ class Socks5Client(tcp_socket.TCPSocket):
         if self._partner != self:
             type = "in"
 
-        self._request_context["app_context"]["connections"][self][type]["bytes"] += bytes
+        self._request_context[
+            "app_context"
+        ]["connections"][self][type]["bytes"] += bytes
 
     ## On read event.
     # Read from @ref _partner until maximum size of @ref _buffer is recived.
@@ -351,7 +353,9 @@ class Socks5Client(tcp_socket.TCPSocket):
         event = event_object.BaseEvent.POLLERR
         if (
             self._state == constants.ACTIVE and
-            not len(self._buffer) >= self._request_context["app_context"]["max_buffer_size"] and
+            not len(self._buffer) >= self._request_context[
+                "app_context"
+            ]["max_buffer_size"] and
             self._machine_current_state in (
                 constants.CLIENT_RECV_GREETING,
                 constants.CLIENT_RECV_CONNECTION_REQUEST,

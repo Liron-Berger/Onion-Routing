@@ -3,8 +3,8 @@
 # Service for registering new nodes.
 #
 
-import urlparse
 import logging
+import urlparse
 
 from common.utilities import http_util
 from registry.services import base_service

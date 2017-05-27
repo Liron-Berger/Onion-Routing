@@ -11,7 +11,6 @@ import signal
 from common import constants
 from common.async import async_server
 from common.async import event_object
-from common.pollables import listener_socket
 from common.utilities import util
 from common.utilities import xml_util
 from node_client.pollables import client_node

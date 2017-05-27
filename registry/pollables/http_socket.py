@@ -315,7 +315,9 @@ class HttpSocket(tcp_socket.TCPSocket):
         event = event_object.BaseEvent.POLLERR
         if (
             self._state == constants.ACTIVE and
-            not len(self._buffer) >= self._request_context["app_context"]["max_buffer_size"] and
+            not len(self._buffer) >= self._request_context[
+                "app_context"
+            ]["max_buffer_size"] and
             self._machine_state <= constants.RECV_CONTENT
         ):
             event |= event_object.BaseEvent.POLLIN

@@ -79,6 +79,7 @@ def get_headers(
     request_context,
     service_class,
 ):
+    request_context["request_headers"] = {}
     finished = False
     for i in range(constants.MAX_NUMBER_OF_HEADERS):
         line, buffer = recv_line(buffer)

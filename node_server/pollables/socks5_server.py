@@ -270,7 +270,9 @@ class Socks5Server(tcp_socket.TCPSocket):
     def on_read(self):
         data = util.recieve_buffer(
             self._socket,
-            self._request_context["app_context"]["max_buffer_size"] - len(self._partner.buffer),
+            self._request_context[
+                "app_context"
+            ]["max_buffer_size"] - len(self._partner.buffer),
         )
         if(
             self._machine_current_state != constants.PARTNER_STATE or
@@ -321,7 +323,9 @@ class Socks5Server(tcp_socket.TCPSocket):
         if (
             (
                 self._state == constants.ACTIVE and
-                not len(self._buffer) >= self._request_context["app_context"]["max_buffer_size"]
+                not len(self._buffer) >= self._request_context[
+                    "app_context"
+                ]["max_buffer_size"]
             ) and self._machine_current_state in (
                 constants.PARTNER_STATE,
                 constants.RECV_CONNECTION_REQUEST,

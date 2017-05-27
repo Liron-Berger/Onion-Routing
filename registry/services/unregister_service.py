@@ -3,8 +3,8 @@
 # Service for unregistering new nodes.
 #
 
-import urlparse
 import logging
+import urlparse
 
 from registry.services import base_service
 
@@ -24,7 +24,6 @@ class UnregisterService(base_service.BaseService):
         self._request_context["code"] = 301
         self._request_context["status"] = "Moved Permanently"
 
-
     ## Function called before sending HTTP headers.
     # Removes the recieved node from the registry.
     #
@@ -37,8 +36,8 @@ class UnregisterService(base_service.BaseService):
         self._request_context["response"] = "unregistered"
 
         self._request_context["response_headers"] = {
-            'Cache-Control': 'no-cache, no-store, must-revalidate', 
-            'Pragma': 'no-cache', 
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
             'Expires': '0',
             'Location': 'nodes.html',
         }
@@ -64,4 +63,3 @@ class UnregisterService(base_service.BaseService):
             self._request_context["app_context"]["xml"].update()
         else:
             logging.info("node was not in registry...")
-

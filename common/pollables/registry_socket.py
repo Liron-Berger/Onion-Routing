@@ -3,12 +3,15 @@
 # Socket class for sending register and unregister requests for new nodes.
 #
 
+import ast
 import logging
 
 from common import constants
 from common.async import event_object
 from common.pollables import tcp_socket
+from common.utilities import http_util
 from common.utilities import util
+from registry.services import base_service
 
 
 ## Registring socket.
@@ -175,18 +178,39 @@ class RegistrySocket(tcp_socket.TCPSocket):
         super(RegistrySocket, self).on_write()
         return True
 
-    ## Recv unregister request.
-    # Recieving dictionary of all nodes from registry and storing it in app_context.
-    # @returns (bool) whether nodes finished reading and converted string to dict.
+    ## Recv nodes request.
+    # Recieving dictionary of all nodes from registry and storing
+    # it in app_context.
+    # @returns (bool) whether nodes finished reading and converted
+    # string to dict.
     #
     def _recv_nodes(self):
-        if "finished" in self._buffer:
-            import ast
-            self._request_context["app_context"]["registry"] = ast.literal_eval(self._buffer[39:self._buffer.find("finished")])
-            self._buffer = self._buffer[self._buffer.find("finished"):]
-            return True
-        else:
+        line, updated_buffer = http_util.recv_line(self._buffer)
+        if not line:
             return False
+        if not ("200" in line.split() and "OK" in line.split()):
+            return False
+        status, updated_buffer = http_util.get_headers(
+            updated_buffer,
+            self._request_context,
+            base_service.BaseService(self._request_context),
+        )
+        if(
+            not status or
+            constants.CONTENT_LENGTH not in self._request_context[
+                "request_headers"
+            ]
+        ):
+            return False
+
+        length = int(
+            self._request_context["request_headers"][constants.CONTENT_LENGTH]
+        )
+        self._request_context[
+            "app_context"
+        ]["registry"] = ast.literal_eval(updated_buffer[:length])
+        self._buffer = self._buffer[self._buffer.find("/r/n/r/n") + 4:]
+        return True
 
     ## Change @ref _machine_state to SEND_NODE.
     def get_nodes(self):
@@ -203,7 +227,9 @@ class RegistrySocket(tcp_socket.TCPSocket):
     def on_read(self):
         self._buffer += util.recieve_buffer(
             self._socket,
-            self._request_context["app_context"]["max_buffer_size"] - len(self._buffer),
+            self._request_context[
+                "app_context"
+            ]["max_buffer_size"] - len(self._buffer),
         )
         if self._state_machine[self._machine_state]["method"]():
             self._machine_state = self._state_machine[

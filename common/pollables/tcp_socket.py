@@ -56,7 +56,9 @@ class TCPSocket(pollable.Pollable):
     def on_read(self):
         self._partner.buffer += util.recieve_buffer(
             self._socket,
-            self._request_context["app_context"]["max_buffer_size"] - len(self._partner.buffer),
+            self._request_context[
+                "app_context"
+            ]["max_buffer_size"] - len(self._partner.buffer),
         )
 
     ## On write event.
@@ -107,7 +109,9 @@ class TCPSocket(pollable.Pollable):
         event = event_object.BaseEvent.POLLERR
         if (
             self._state == constants.ACTIVE and
-            not len(self._buffer) >= self._request_context["app_context"]["max_buffer_size"]
+            not len(self._buffer) >= self._request_context[
+                "app_context"
+            ]["max_buffer_size"]
         ):
             event |= event_object.BaseEvent.POLLIN
         if self._buffer:
