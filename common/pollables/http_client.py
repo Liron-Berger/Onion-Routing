@@ -1,6 +1,6 @@
 #!/usr/bin/python
-## @package onion_routing.common.pollables.registry_socket
-# Socket class for sending register and unregister requests for new nodes.
+## @package onion_routing.common.pollables.http_client
+# Socket class for sending requests to http_server.
 #
 
 import ast
@@ -14,13 +14,13 @@ from common.utilities import util
 from registry.services import base_service
 
 
-## Registring socket.
+## Http client socket.
 #
 # Created when a new node is opened.
 # Sends register request to the registry.
 # Once node is closed, sends an unregister request to the registry.
 #
-class RegistrySocket(tcp_socket.TCPSocket):
+class HttpClient(tcp_socket.TCPSocket):
 
     ## Register request structure.
     # Missing the address and port fields
@@ -61,7 +61,7 @@ class RegistrySocket(tcp_socket.TCPSocket):
         connect_port,
         node,
     ):
-        super(RegistrySocket, self).__init__(
+        super(HttpClient, self).__init__(
             socket,
             state,
             app_context,
@@ -122,12 +122,12 @@ class RegistrySocket(tcp_socket.TCPSocket):
     # @returns (bool) whether sending is finished.
     #
     def _send_register(self):
-        self._buffer = RegistrySocket.REGISTER_REQUEST % (
+        self._buffer = HttpClient.REGISTER_REQUEST % (
             self._node.bind_address,
             self._node.bind_port,
             self._node.key,
         )
-        super(RegistrySocket, self).on_write()
+        super(HttpClient, self).on_write()
         return True
 
     ## Register response.
@@ -152,10 +152,10 @@ class RegistrySocket(tcp_socket.TCPSocket):
     # @returns (bool) whether sending is finished.
     #
     def _send_unregister(self):
-        self._buffer = RegistrySocket.UNREGISTER_REQUEST % (
+        self._buffer = HttpClient.UNREGISTER_REQUEST % (
             self._node.bind_port,
         )
-        super(RegistrySocket, self).on_write()
+        super(HttpClient, self).on_write()
         return True
 
     ## Recv unregister request.
@@ -174,8 +174,8 @@ class RegistrySocket(tcp_socket.TCPSocket):
     # @returns (bool) whether sending is finished.
     #
     def _send_nodes(self):
-        self._buffer = RegistrySocket.NODES_REQUEST
-        super(RegistrySocket, self).on_write()
+        self._buffer = HttpClient.NODES_REQUEST
+        super(HttpClient, self).on_write()
         return True
 
     ## Recv nodes request.
@@ -273,13 +273,13 @@ class RegistrySocket(tcp_socket.TCPSocket):
     #
     def on_close(self):
         if self._machine_state == constants.UNREGISTERED:
-            super(RegistrySocket, self).on_close()
+            super(HttpClient, self).on_close()
         else:
             pass
 
     ## String representation.
     def __repr__(self):
-        return "RegistrySocket object for %s:%s. fd: %s" % (
+        return "HttpClient object for %s:%s. fd: %s" % (
             self._node.bind_address,
             self._node.bind_port,
             self.fileno(),

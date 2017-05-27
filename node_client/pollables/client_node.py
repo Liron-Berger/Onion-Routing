@@ -11,7 +11,7 @@ import traceback
 from common import constants
 from common.pollables import tcp_socket
 from common.pollables import listener_socket
-from common.pollables import registry_socket
+from common.pollables import http_client
 from node_client.pollables import socks5_client
 
 
@@ -52,8 +52,8 @@ class ClientNode(listener_socket.Listener):
         ## Secret key for encryption.
         self._key = random.randint(0, 255)
 
-        ## Registry socket, for registering and unregistring to the registry.
-        self.registry_socket = registry_socket.RegistrySocket(
+        ## http client, for registering and unregistring to the registry.
+        self.http_client = http_client.HttpClient(
             socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM),
             state=constants.ACTIVE,
             app_context=app_context,
@@ -74,7 +74,7 @@ class ClientNode(listener_socket.Listener):
     # - Add socks5_c to @ref common.async.async_server._socket_data.
     #
     def on_read(self):
-        self.registry_socket.get_nodes()
+        self.http_client.get_nodes()
         try:
             browser_socket = None
             socks5_c = None
@@ -154,11 +154,11 @@ class ClientNode(listener_socket.Listener):
 
     ## Close Node.
     # Closing @ref _socket.
-    # Entering unregister state in @ref registry_socket.
+    # Entering unregister state in @ref http_client.
     #
     def close(self):
         self._socket.close()
-        self.registry_socket.unregister()
+        self.http_client.unregister()
 
     ## Retrive @ref _key.
     @property

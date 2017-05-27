@@ -91,9 +91,9 @@ HTTP_STATES = (
 ) = range(6)
 
 
-## Registry socket states for registering new
+## http client states for registering new
 ##     @ref node_server.pollables.socks5_server
-##     for @ref node_server.pollables.registry_socket.
+##     for @ref node_server.pollables.http_client.
 # - SEND_REGISTER: Sending registring request.
 # - RECV_REGISTER: Recieving response for register request.
 # - SEND_UNREGISTER: Sending unregistering request.

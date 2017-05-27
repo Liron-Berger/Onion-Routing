@@ -136,7 +136,7 @@ def __main__():
         config.get("ClientNode", "bind.address"),
         config.getint("ClientNode", "bind.port"),
     )
-    server.add_socket(node.registry_socket)
+    server.add_socket(node.http_client)
 
     logging.info("Starting the async server...")
 

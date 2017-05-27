@@ -31,7 +31,7 @@ class HTTPError(RuntimeError):
 ## Get first line of HTTP request.
 # @param buffer (str) request buffer.
 # @param request_context (dict) request context
-# of @ref registry_socket.pollables.http_socket.
+# of @ref http_client.pollables.http_socket.
 #
 # @returns (bool) whether first line is HTTP protocol
 # request with supported methods.

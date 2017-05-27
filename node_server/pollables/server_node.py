@@ -10,7 +10,7 @@ import traceback
 
 from common import constants
 from common.pollables import listener_socket
-from common.pollables import registry_socket
+from common.pollables import http_client
 from node_server.pollables import socks5_server
 
 
@@ -50,8 +50,8 @@ class ServerNode(listener_socket.Listener):
         ## Secret key for encryption.
         self._key = random.randint(0, 255)
 
-        ## Registry socket, for registering and unregistring to the registry.
-        self.registry_socket = registry_socket.RegistrySocket(
+        ## http client, for registering and unregistring to the registry.
+        self.http_client = http_client.HttpClient(
             socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM),
             state=constants.ACTIVE,
             app_context=app_context,
@@ -90,11 +90,11 @@ class ServerNode(listener_socket.Listener):
 
     ## Close Node.
     # Closing @ref _socket.
-    # Entering unregister state in @ref registry_socket.
+    # Entering unregister state in @ref http_client.
     #
     def close(self):
         self._socket.close()
-        self.registry_socket.unregister()
+        self.http_client.unregister()
 
     ## Retrive @ref _key.
     @property
