@@ -13,7 +13,7 @@ from common.utilities import encryption_util
 from common.utilities import socks5_util
 from common.utilities import util
 
-from common.pollables import base_socket
+from common.pollables import tcp_socket
 
 
 ## Socks5 Server.
@@ -23,7 +23,7 @@ from common.pollables import base_socket
 # Supports only part of the options available in the protocol which are
 # used for the purpose of the project.
 #
-class Socks5Server(base_socket.BaseSocket):
+class Socks5Server(tcp_socket.TCPSocket):
 
     ## Constructor.
     # @param socket (socket) the wrapped socket.
@@ -57,8 +57,8 @@ class Socks5Server(base_socket.BaseSocket):
         ## Dictionary for linking supported commands to their procedure.
         self._command_map = self._create_command_map()
 
-        ## Request context.
-        self._request_context = {}
+        ## Decode dict.
+        self._decode = {}
 
         ## Secret key for encryption.
         self._key = key
@@ -112,21 +112,21 @@ class Socks5Server(base_socket.BaseSocket):
     # - Choose the right method from the recieved ones.
     #
     def _recv_greeting(self):
-        if not self._request_context:
-            self._request_context = socks5_util.GreetingRequest.decode(
+        if not self._decode:
+            self._decode = socks5_util.GreetingRequest.decode(
                 self._buffer,
             )
 
-        if constants.MY_SOCKS_SIGNATURE in self._request_context["methods"]:
+        if constants.MY_SOCKS_SIGNATURE in self._decode["methods"]:
             self._last_node = False
-            self._request_context["methods"].remove(
+            self._decode["methods"].remove(
                 constants.MY_SOCKS_SIGNATURE,
             )
 
-        self._request_context["method"] = constants.NO_ACCEPTABLE_METHODS
-        for m in self._request_context["methods"]:
+        self._decode["method"] = constants.NO_ACCEPTABLE_METHODS
+        for m in self._decode["methods"]:
             if m in constants.SUPPORTED_METHODS:
-                self._request_context["method"] = m
+                self._decode["method"] = m
                 break
         return True
 
@@ -137,7 +137,7 @@ class Socks5Server(base_socket.BaseSocket):
     #
     def _send_greeting(self):
         self._buffer = socks5_util.GreetingResponse.encode(
-            self._request_context,
+            self._decode,
         )
         return True
 
@@ -148,13 +148,13 @@ class Socks5Server(base_socket.BaseSocket):
     # - Run command procedure and save status.
     #
     def _recv_connection_request(self):
-        if not self._request_context:
-            self._request_context = socks5_util.Socks5Request.decode(
+        if not self._decode:
+            self._decode = socks5_util.Socks5Request.decode(
                 self._buffer,
             )
 
-        self._request_context["reply"] = self._command_map[
-            self._request_context["command"]
+        self._decode["reply"] = self._command_map[
+            self._decode["command"]
         ]()
         return True
 
@@ -165,7 +165,7 @@ class Socks5Server(base_socket.BaseSocket):
     #
     def _send_connection_request(self):
         self._buffer = socks5_util.Socks5Response.encode(
-            self._request_context,
+            self._decode,
         )
         return True
 
@@ -188,8 +188,8 @@ class Socks5Server(base_socket.BaseSocket):
         reply = constants.SUCCESS
         try:
             self._connect(
-                self._request_context["address"],
-                self._request_context["port"],
+                self._decode["address"],
+                self._decode["port"],
             )
         except Exception:
             logging.error(traceback.format_exc())
@@ -200,7 +200,7 @@ class Socks5Server(base_socket.BaseSocket):
     # @param address (str) connect address.
     # @param port (int) connect port.
     #
-    # - Create a new partner socket - @ref common.pollables.BaseSocket.
+    # - Create a new partner socket - @ref common.pollables.TCPSocket.
     # - Connect the partner to address:port which were recieved from
     # the client.
     # - set @ref _partner = partner.
@@ -224,10 +224,10 @@ class Socks5Server(base_socket.BaseSocket):
         try:
             partner = None
 
-            partner = base_socket.BaseSocket(
+            partner = tcp_socket.TCPSocket(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM),
                 constants.ACTIVE,
-                self._app_context,
+                self._request_context["app_context"],
             )
 
             util.connect(
@@ -238,7 +238,7 @@ class Socks5Server(base_socket.BaseSocket):
 
             self._partner = partner
             partner.partner = self
-            self._app_context[
+            self._request_context["app_context"][
                 "socket_data"
             ][partner.fileno()] = partner
         except Exception:
@@ -270,7 +270,7 @@ class Socks5Server(base_socket.BaseSocket):
     def on_read(self):
         data = util.recieve_buffer(
             self._socket,
-            self._app_context["max_buffer_size"] - len(self._partner.buffer),
+            self._request_context["app_context"]["max_buffer_size"] - len(self._partner.buffer),
         )
         if(
             self._machine_current_state != constants.PARTNER_STATE or
@@ -304,7 +304,7 @@ class Socks5Server(base_socket.BaseSocket):
             else:
                 super(Socks5Server, self).on_write()
 
-            self._request_context = {}
+            self._decode = {}
             self._machine_current_state = self._state_machine[
                 self._machine_current_state
             ]["next"]
@@ -321,7 +321,7 @@ class Socks5Server(base_socket.BaseSocket):
         if (
             (
                 self._state == constants.ACTIVE and
-                not len(self._buffer) >= self._app_context["max_buffer_size"]
+                not len(self._buffer) >= self._request_context["app_context"]["max_buffer_size"]
             ) and self._machine_current_state in (
                 constants.PARTNER_STATE,
                 constants.RECV_CONNECTION_REQUEST,

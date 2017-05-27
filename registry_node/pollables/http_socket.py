@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.registry_node.pollables.http_server
+## @package onion_routing.registry_node.pollables.http_socket
 # Implementation of HTTP server which supports certain
 # @ref node_server.services.
 #
@@ -9,21 +9,21 @@ import importlib
 
 from common import constants
 from common.async import event_object
-from common.pollables import base_socket
+from common.pollables import tcp_socket
 from common.utilities import http_util
 from registry_node.services import base_service
 from registry_node.services import file_service
 
 
 ## Http Server.
-class HttpServer(base_socket.BaseSocket):
+class HttpSocket(tcp_socket.TCPSocket):
 
     ## Request context.
-    request_context = {}
+    _request_context = {}
 
     ## Constructor.
     # @param socket (socket) the wrapped socket.
-    # @param state (int) state of HttpServer.
+    # @param state (int) state of HttpSocket.
     # @param app_context (dict) application context.
     #
     # Creates a wrapper for the given @ref _socket to be able to
@@ -35,7 +35,7 @@ class HttpServer(base_socket.BaseSocket):
         state,
         app_context,
     ):
-        super(HttpServer, self).__init__(
+        super(HttpSocket, self).__init__(
             socket,
             state,
             app_context,
@@ -106,17 +106,17 @@ class HttpServer(base_socket.BaseSocket):
     def _recv_status(self):
         status, self._buffer = http_util.get_first_line(
             self._buffer,
-            self.request_context,
+            self._request_context,
         )
         if not status:
             return False
 
         try:
             self._service_class = self.SERVICES.get(
-                self.request_context["parse"].path,
+                self._request_context["parse"].path,
                 file_service.FileService,
             )(
-                self.request_context,
+                self._request_context,
             )
             logging.info("service %s requested" % (self._service_class.NAME))
         except KeyError:
@@ -137,7 +137,7 @@ class HttpServer(base_socket.BaseSocket):
     def _recv_headers(self):
         status, self._buffer = http_util.get_headers(
             self._buffer,
-            self.request_context,
+            self._request_context,
             self._service_class,
         )
         if status:
@@ -158,11 +158,11 @@ class HttpServer(base_socket.BaseSocket):
     def _recv_content(self):
         http_util.get_content(
             self._buffer,
-            self.request_context,
+            self._request_context,
         )
         while self._service_class.handle_content():
             pass
-        if "content_length" not in self.request_context:
+        if "content_length" not in self._request_context:
             self._service_class.before_response_status()
             return True
         elif not self._buffer:
@@ -179,8 +179,8 @@ class HttpServer(base_socket.BaseSocket):
             "%s %s %s\r\n"
         ) % (
             constants.HTTP_SIGNATURE,
-            self.request_context["code"],
-            self.request_context["status"]
+            self._request_context["code"],
+            self._request_context["status"]
         )
         self._service_class.before_response_headers()
         return True
@@ -194,7 +194,7 @@ class HttpServer(base_socket.BaseSocket):
     def _send_headers(self):
         status, self._buffer = http_util.set_headers(
             self._buffer,
-            self.request_context,
+            self._request_context,
         )
         if status:
             self._service_class.before_response_content()
@@ -219,45 +219,43 @@ class HttpServer(base_socket.BaseSocket):
             return True
         else:
             self._buffer += content
-            super(HttpServer, self).on_write()
+            super(HttpSocket, self).on_write()
             return False
 
-    ## Reset _request_context.
+    ## Reset __request_context.
     # Empty all request fields of previous request.
     # Empty _buffer.
     # Empty _service_class.
     #
     def _reset(self):
-        self.request_context = {
-            "app_context": self._app_context,
-            "uri": "",
-            "parse": "",
-            "code": 200,
-            "status": "OK",
-            "request_headers": {},
-            "response_headers": {},
-            "response": "",
-            "content": "",
-        }
+        self._request_context["uri"] = ""
+        self._request_context["parse"] = ""
+        self._request_context["code"] = 200
+        self._request_context["status"] = "OK"
+        self._request_context["request_headers"] = {}
+        self._request_context["response_headers"] = {}
+        self._request_context["response"] = ""
+        self._request_context["content"] = ""
+
         self._buffer = ""
         self._service_class = None
 
     ## HTTP error handler.
     # @param e (HTTPError) the HTTPError which was caught.
-    # Fills @ref request_context with error response status, headers, content.
+    # Fills @ref _request_context with error response status, headers, content.
     #
     def _http_error(self, e):
-        self.request_context["code"] = e.code
-        self.request_context["status"] = e.status
-        self.request_context["response"] = e.message
-        self.request_context[
+        self._request_context["code"] = e.code
+        self._request_context["status"] = e.status
+        self._request_context["response"] = e.message
+        self._request_context[
             "response_headers"
-        ]["Content-Length"] = len(self.request_context["response"])
-        self.request_context[
+        ]["Content-Length"] = len(self._request_context["response"])
+        self._request_context[
             "response_headers"
         ]["Content-Type"] = "text/plain"
         self._service_class = base_service.BaseService(
-            self.request_context,
+            self._request_context,
         )
         self._machine_state = constants.SEND_STATUS
 
@@ -269,7 +267,7 @@ class HttpServer(base_socket.BaseSocket):
     # On HTTPError: call @ref _http_error().
     #
     def on_read(self):
-        super(HttpServer, self).on_read()
+        super(HttpSocket, self).on_read()
         try:
             while self._machine_state <= constants.RECV_CONTENT:
                 if self._state_machine[self._machine_state]["method"]():
@@ -314,7 +312,7 @@ class HttpServer(base_socket.BaseSocket):
         event = event_object.BaseEvent.POLLERR
         if (
             self._state == constants.ACTIVE and
-            not len(self._buffer) >= self._app_context["max_buffer_size"] and
+            not len(self._buffer) >= self._request_context["app_context"]["max_buffer_size"] and
             self._machine_state <= constants.RECV_CONTENT
         ):
             event |= event_object.BaseEvent.POLLIN
@@ -327,6 +325,6 @@ class HttpServer(base_socket.BaseSocket):
 
     ## String representation.
     def __repr__(self):
-        return "HttpServer object. fd: %s" % (
+        return "HttpSocket object. fd: %s" % (
             self.fileno(),
         )

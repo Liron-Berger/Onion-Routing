@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.common.pollables.base_socket
+## @package onion_routing.common.pollables.tcp_socket
 # Base class for all sockets used for sending and reciving data.
 #
 
@@ -13,11 +13,14 @@ from common.async import event_object
 # Used by async_server to read and write data from client.
 # Can be used as a proxy between two ends.
 #
-class BaseSocket(pollable.Pollable):
+class TCPSocket(pollable.Pollable):
+
+    # Request context.
+    _request_context = {}
 
     ## Constructor.
     # @param socket (socket) the wrapped socket.
-    # @param state (int) state of BaseSocket.
+    # @param state (int) state of TCPSocket.
     # @param app_context (dict) application context.
     #
     # Creates a wrapper for the given @ref _socket to be able to
@@ -33,7 +36,7 @@ class BaseSocket(pollable.Pollable):
         self._socket = socket
         self._socket.setblocking(False)
 
-        ## State of BaseSocket.
+        ## State of TCPSocket.
         self._state = state
 
         ## Buffer in which messages for reading/writing are stored.
@@ -41,12 +44,11 @@ class BaseSocket(pollable.Pollable):
 
         ## Partner of socket.
         # Initialized as self to read and write to client.
-        # If changed BaseSocket will act as proxy between client and partner.
+        # If changed TCPSocket will act as proxy between client and partner.
         #
         self._partner = self
 
-        ## Application context.
-        self._app_context = app_context
+        self._request_context["app_context"] = app_context
 
     ## On read event.
     # Read from @ref _partner until maximum size of @ref _buffer is recived.
@@ -54,7 +56,7 @@ class BaseSocket(pollable.Pollable):
     def on_read(self):
         self._partner.buffer += util.recieve_buffer(
             self._socket,
-            self._app_context["max_buffer_size"] - len(self._partner.buffer),
+            self._request_context["app_context"]["max_buffer_size"] - len(self._partner.buffer),
         )
 
     ## On write event.
@@ -68,7 +70,7 @@ class BaseSocket(pollable.Pollable):
 
     ## On close event.
     # Change @ref _state of socket to CLOSING and empty @ref _buffer.
-    # If BaseSocket is proxy run on_close on @ref _partner.
+    # If TCPSocket is proxy run on_close on @ref _partner.
     #
     def on_close(self):
         self._state = constants.CLOSING
@@ -89,7 +91,7 @@ class BaseSocket(pollable.Pollable):
     def is_closing(self):
         return self._state == constants.CLOSING and not self._buffer
 
-    ## Close BaseSocket.
+    ## Close TCPSocket.
     # Closing @ref _socket.
     #
     def close(self):
@@ -105,14 +107,14 @@ class BaseSocket(pollable.Pollable):
         event = event_object.BaseEvent.POLLERR
         if (
             self._state == constants.ACTIVE and
-            not len(self._buffer) >= self._app_context["max_buffer_size"]
+            not len(self._buffer) >= self._request_context["app_context"]["max_buffer_size"]
         ):
             event |= event_object.BaseEvent.POLLIN
         if self._buffer:
             event |= event_object.BaseEvent.POLLOUT
         return event
 
-    ## fileno of BaseSocket.
+    ## fileno of TCPSocket.
     def fileno(self):
         return self._socket.fileno()
 
@@ -158,6 +160,6 @@ class BaseSocket(pollable.Pollable):
 
     ## String representation.
     def __repr__(self):
-        return "BaseSocket object. fileno: %d." % (
+        return "TCPSocket object. fileno: %d." % (
             self.fileno(),
         )

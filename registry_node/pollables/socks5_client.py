@@ -7,7 +7,7 @@
 
 from common import constants
 from common.async import event_object
-from common.pollables import base_socket
+from common.pollables import tcp_socket
 from common.utilities import encryption_util
 from common.utilities import util
 from common.utilities import socks5_util
@@ -21,7 +21,10 @@ from common.utilities import socks5_util
 # messages from the browser to the last node which will finally
 # redirect it to the destination.
 #
-class Socks5Client(base_socket.BaseSocket):
+class Socks5Client(tcp_socket.TCPSocket):
+
+    ## Request context.
+    _request_context = {}
 
     ## Currently connected nodes from the path.
     _connected_nodes = 1
@@ -30,7 +33,7 @@ class Socks5Client(base_socket.BaseSocket):
     # @param socket (socket) the wrapped socket.
     # @param state (int) state of Socks5Server.
     # @param app_context (dict) application context.
-    # @param browser_socket (socket) @ref common.pollables.base_socket object
+    # @param browser_socket (socket) @ref common.pollables.tcp_socket object
     #   for redirecting from the client to @ref_partner after socks5
     #   is established.
     # @param path (dict) the nodes and their order.
@@ -65,9 +68,6 @@ class Socks5Client(base_socket.BaseSocket):
 
         ## Machine current state.
         self._machine_current_state = constants.CLIENT_SEND_GREETING
-
-        ## Request context.
-        self._request_context = {}
 
         self._start_byte_counter()
 
@@ -201,11 +201,11 @@ class Socks5Client(base_socket.BaseSocket):
                 ]["next"] = constants.PARTNER_STATE
                 self._partner = self._browser_socket
 
-                self._app_context["socket_data"][
+                self._request_context["app_context"]["socket_data"][
                     self._browser_socket.fileno()
                 ] = self._browser_socket
 
-                self._app_context["connections"][
+                self._request_context["app_context"]["connections"][
                     self
                 ]["in"] = {
                     "bytes": 0,
@@ -225,7 +225,7 @@ class Socks5Client(base_socket.BaseSocket):
     # save bytes recieved and sent for statistics.
     #
     def _start_byte_counter(self):
-        self._app_context["connections"][self] = {
+        self._request_context["app_context"]["connections"][self] = {
             "in": {
                 "bytes": None,
                 "fd": None,
@@ -248,7 +248,7 @@ class Socks5Client(base_socket.BaseSocket):
         if self._partner != self:
             type = "in"
 
-        self._app_context["connections"][self][type]["bytes"] += bytes
+        self._request_context["app_context"]["connections"][self][type]["bytes"] += bytes
 
     ## On read event.
     # Read from @ref _partner until maximum size of @ref _buffer is recived.
@@ -262,7 +262,7 @@ class Socks5Client(base_socket.BaseSocket):
         data = encryption_util.decrypt(
             util.recieve_buffer(
                 self._socket,
-                self._app_context[
+                self._request_context["app_context"][
                     "max_buffer_size"
                 ] - len(self._partner.buffer),
             ),
@@ -319,7 +319,7 @@ class Socks5Client(base_socket.BaseSocket):
 
     ## On close event.
     # Change @ref _state of socket to CLOSING and empty @ref _buffer.
-    # If BaseSocket is proxy run on_close on @ref _partner.
+    # If TCPSocket is proxy run on_close on @ref _partner.
     # If browser was not closed, change it state to CLOSING
     #
     def on_close(self):
@@ -328,13 +328,13 @@ class Socks5Client(base_socket.BaseSocket):
         if self._partner != self._browser_socket:
             self._browser_socket.state = constants.CLOSING
 
-    ## Close BaseSocket.
+    ## Close TCPSocket.
     # Closing @ref _socket.
     # Remove this connection from statistics.
     # If browser was not closed, close it.
     #
     def close(self):
-        del self._app_context["connections"][self]
+        del self._request_context["app_context"]["connections"][self]
         super(Socks5Client, self).close()
 
         if self._partner != self._browser_socket:
@@ -351,7 +351,7 @@ class Socks5Client(base_socket.BaseSocket):
         event = event_object.BaseEvent.POLLERR
         if (
             self._state == constants.ACTIVE and
-            not len(self._buffer) >= self._app_context["max_buffer_size"] and
+            not len(self._buffer) >= self._request_context["app_context"]["max_buffer_size"] and
             self._machine_current_state in (
                 constants.CLIENT_RECV_GREETING,
                 constants.CLIENT_RECV_CONNECTION_REQUEST,

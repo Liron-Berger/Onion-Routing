@@ -7,7 +7,7 @@ import logging
 
 from common import constants
 from common.async import event_object
-from common.pollables import base_socket
+from common.pollables import tcp_socket
 from common.utilities import util
 
 
@@ -17,7 +17,7 @@ from common.utilities import util
 # Sends register request to the registry.
 # Once node is closed, sends an unregister request to the registry.
 #
-class RegistrySocket(base_socket.BaseSocket):
+class RegistrySocket(tcp_socket.TCPSocket):
 
     ## Register request structure.
     # Missing the address and port fields
@@ -36,7 +36,7 @@ class RegistrySocket(base_socket.BaseSocket):
 
     ## Constructor.
     # @param socket (socket) the wrapped socket.
-    # @param state (int) state of BaseSocket.
+    # @param state (int) state of TCPSocket.
     # @param app_context (dict) application context.
     # @param connect_address (str) the address of the registry.
     # @param connect_port (int) the port of the registry.
@@ -165,7 +165,7 @@ class RegistrySocket(base_socket.BaseSocket):
     def on_read(self):
         self._buffer += util.recieve_buffer(
             self._socket,
-            self._app_context["max_buffer_size"] - len(self._buffer),
+            self._request_context["app_context"]["max_buffer_size"] - len(self._buffer),
         )
         if self._state_machine[self._machine_state]["method"]():
             self._machine_state = self._state_machine[

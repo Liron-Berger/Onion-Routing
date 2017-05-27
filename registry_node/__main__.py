@@ -16,7 +16,7 @@ from common.pollables import listener_socket
 from common.utilities import util
 from common.utilities import xml_util
 from registry_node.pollables import client_node
-from registry_node.pollables import http_server
+from registry_node.pollables import http_socket
 
 
 ## Poll events dict.
@@ -133,9 +133,9 @@ def __main__():
 
     server.add_listener(
         listener_socket.Listener,
-        config.get("HttpServer", "bind.address"),
-        config.getint("HttpServer", "bind.port"),
-        listener_type=http_server.HttpServer,
+        config.get("HttpSocket", "bind.address"),
+        config.getint("HttpSocket", "bind.port"),
+        listener_type=http_socket.HttpSocket,
     )
 
     server.add_listener(

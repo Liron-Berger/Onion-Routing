@@ -25,7 +25,7 @@ class ServerNode(listener_socket.Listener):
     # @param bind_address (str) bind address of the node.
     # @param bind_port (int) bind port of the node.
     # @param app_context (dict) application context.
-    # @listener_type (optional, @ref common.pollables.base_socket) not used.
+    # @listener_type (optional, @ref common.pollables.tcp_socket) not used.
     #
     def __init__(
         self,

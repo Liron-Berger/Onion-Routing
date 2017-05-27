@@ -72,7 +72,7 @@ SOCKS5_STATES = (
 ) = range(9)
 
 
-## HTTP socket states for @ref registry_node.pollables.http_server.
+## HTTP socket states for @ref registry_node.pollables.http_socket.
 # - RECV_STATUS: Recieve status of HTTP request.
 # - RECV_HEADERS: Recv headers of HTTP request.
 # - RECV_CONTENT: Recieve content of HTTP request.
@@ -190,7 +190,7 @@ MIME_MAPPING = {
     "css": "text/css",
 }
 
-## Paths of all special services for @ref registry_node.pollables.http_server.
+## Paths of all special services for @ref registry_node.pollables.http_socket.
 SERVICES = [
     "registry_node.services.disconnect_service",
     "registry_node.services.register_service",

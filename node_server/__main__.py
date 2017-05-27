@@ -118,8 +118,8 @@ def __main__():
         "max_buffer_size": args.max_buffer_size,
         "base": args.base,
 
-        "http_address": config.get("HttpServer", "bind.address"),
-        "http_port": config.getint("HttpServer", "bind.port"),
+        "http_address": config.get("HttpSocket", "bind.address"),
+        "http_port": config.getint("HttpSocket", "bind.port"),
     }
 
     server = async_server.AsyncServer(

@@ -21,7 +21,7 @@ class Listener(pollable.Pollable):
     # @param bind_address (str) bind address for the listener.
     # @param bind_port (int) bind port for the listener.
     # @param app_context (dict) application context.
-    # @param listener_type (optional, @ref common.pollables.base_socket)
+    # @param listener_type (optional, @ref common.pollables.tcp_socket)
     # type of socket to listen to.
     #
     # Creates a new socket and binds it to (bind_address, bind_port).
