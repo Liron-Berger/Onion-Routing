@@ -72,7 +72,7 @@ There is no graphical interface as part of the main program.
 In order too enter the GUI in your prefered browser (not Firefox as Firefox should be working with socks5)
 type:
 ```
-(your_ip):8080/
+[your_ip]:8080/
 ```
 This will open the home page from which other options are available.
 
