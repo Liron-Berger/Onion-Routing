@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.registry.services.unregister_service
 # Service for unregistering new nodes.
+## @file unregister_service.py
+# Implementation of @ref onion_routing.registry.services.unregister_service
 #
 
 import logging

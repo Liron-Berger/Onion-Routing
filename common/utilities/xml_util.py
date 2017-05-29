@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.utilities.xml_util
 # utilities for handling the statistics xml file.
+## @file xml_util.py
+# Implementation of @ref onion_routing.common.utilities.xml_util
 #
 
 import logging

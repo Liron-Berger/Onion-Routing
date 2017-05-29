@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.registry.services.menu_service
 # Service for openening main menu when client connects.
+## @file menu_service.py
+# Implementation of @ref onion_routing.registry.services.menu_service
 #
 
 import os

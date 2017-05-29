@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.utilities.socks5_util
 # utilities for handling socks5 protocol rfc 1928.
+## @file socks5_util.py
+# Implementation of @ref onion_routing.common.utilities.socks5_util
 #
 
 from common import constants
@@ -57,7 +59,7 @@ class GreetingRequest(Socks5Packet):
             raise
 
     ## Decode packet message.
-    # @param data (str) encoded message.
+    # @param buffer (str) encoded message.
     # @returns (dict) decoded request.
     #
     @staticmethod
@@ -185,7 +187,7 @@ class Socks5Request(Socks5Packet):
             raise
 
     ## Decode packet message.
-    # @param data (str) encoded message.
+    # @param buffer (str) encoded message.
     # @returns (dict) decoded request.
     #
     @staticmethod

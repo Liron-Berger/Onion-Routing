@@ -1,7 +1,9 @@
 #!/usr/bin/python
 ## @package onion_routing.registry.pollables.http_socket
 # Implementation of HTTP server which supports certain
-# @ref node_server.services.
+# @ref onion_routing.registry.services.
+## @file http_socket.py
+# Implementation of @ref onion_routing.registry.pollables.http_socket
 #
 
 import logging
@@ -26,7 +28,8 @@ class HttpSocket(tcp_socket.TCPSocket):
     # @param state (int) state of HttpSocket.
     # @param app_context (dict) application context.
     #
-    # Creates a wrapper for the given @ref _socket to be able to
+    # Creates a wrapper for the given
+    # @ref common.pollables.tcp_socket.TCPSocket._socket to be able to
     # read and write from it asynchronously while handling HTTP requests.
     #
     def __init__(
@@ -98,8 +101,8 @@ class HttpSocket(tcp_socket.TCPSocket):
     #
     # - If request is HTTP, try to open requested service.
     # - If no request is supported, try to use
-    # @ref registry_node.services.file_service.
-    # - Call @ref common.services.base_service.before_request_headers().
+    # @ref registry.services.file_service.
+    # - Call @ref registry.services.base_service.BaseService.before_request_headers().
     #
     # In case of error raise HTTPError.
     #
@@ -132,7 +135,7 @@ class HttpSocket(tcp_socket.TCPSocket):
     # returns (bool) whether state is finished.
     #
     # Get all headers from request.
-    # Call @ref common.services.base_service.before_response_content().
+    # Call @ref registry.services.base_service.BaseService.before_response_content().
     #
     def _recv_headers(self):
         status, self._buffer = http_util.get_headers(
@@ -151,9 +154,9 @@ class HttpSocket(tcp_socket.TCPSocket):
     # returns (bool) whether state is finished.
     #
     # Get content from request.
-    # - Call @ref common.services.base_service.handle_content().
+    # - Call @ref registry.services.base_service.BaseService.handle_content().
     # - After handle_content:
-    # Call @ref common.services.base_service.before_response_status().
+    # Call @ref registry.services.base_service.BaseService.before_response_status().
     #
     def _recv_content(self):
         http_util.get_content(
@@ -172,7 +175,7 @@ class HttpSocket(tcp_socket.TCPSocket):
     # returns (bool) whether state is finished.
     #
     # - Update @ref _buffer to appropriate HTTP status.
-    # - Call @ref common.services.base_service.before_response_headers().
+    # - Call @ref registry.services.base_service.BaseService.before_response_headers().
     #
     def _send_status(self):
         self._buffer = (
@@ -189,7 +192,7 @@ class HttpSocket(tcp_socket.TCPSocket):
     # returns (bool) whether state is finished.
     #
     # - Set headers for HTTP response according to _service_class.
-    # - Call @ref common.services.base_service.before_response_content().
+    # - Call @ref registry.services.base_service.BaseService.before_response_content().
     #
     def _send_headers(self):
         status, self._buffer = http_util.set_headers(
@@ -208,7 +211,7 @@ class HttpSocket(tcp_socket.TCPSocket):
     #
     # Add content from _service_class.response() to _buffer and
     # send the whole HTTP response it to client.
-    # On end of content: @ref common.services.base_service.before_terminate().
+    # On end of content: @ref registry.services.base_service.BaseService.before_terminate().
     #
     def _send_content(self):
         content = None
@@ -263,7 +266,7 @@ class HttpSocket(tcp_socket.TCPSocket):
         self._machine_state = constants.SEND_STATUS
 
     ## On read event.
-    # Read from @ref _partner until maximum size of @ref _buffer is recived.
+    # Read from @ref common.pollables.tcp_socket.TCPSocket._partner until maximum size of @ref _buffer is recived.
     #
     # Enter the appropriate state in _state_machine.
     # Once state is finished, go to the next state.
@@ -301,14 +304,14 @@ class HttpSocket(tcp_socket.TCPSocket):
             self._http_error(e)
 
     ## Get events for poller.
-    # @retuns (int) events to register for poller.
+    # @returns (int) events to register for poller.
     #
     # POLLIN when:
-    # - @ref _state is ACTIVE.
-    # - @ref _buffer is not full.
+    # - @ref common.pollables.tcp_socket.TCPSocket._state is ACTIVE.
+    # - @ref common.pollables.tcp_socket.TCPSocket._buffer is not full.
     # - @ref _machine_state is less then RECV_CONTENT.
     # POLLOUT when:
-    # - @ref _buffer is not empty.
+    # - @ref common.pollables.tcp_socket.TCPSocket._buffer is not empty.
     # - SEND_STATUS <= @ref _machine_state <= SEND_CONTENT
     #
     def get_events(self):

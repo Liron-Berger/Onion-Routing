@@ -1,6 +1,8 @@
 #!/usr/bin/python
-## @package onion_routing.node_client.pollables.client_node
-# Client node which is used as the first node to which browser connects.
+## @package onion_routing.entry.pollables.entry_node
+# Entry node which is used as the first node to which browser connects.
+## @file entry_node.py
+# Implementation of @ref onion_routing.entry.pollables.entry_node
 #
 
 import logging
@@ -12,20 +14,21 @@ from common import constants
 from common.pollables import proxy_socket
 from common.pollables import listener_socket
 from common.pollables import http_client
-from node_client.pollables import socks5_client
+from entry.pollables import socks5_client
 
 
-## Client Node.
+## Entry Node.
 # Nodes responsibly is for opening new connections whenever a connections
 # is recieved.
 #
-class ClientNode(listener_socket.Listener):
+class EntryNode(listener_socket.Listener):
 
     ## Constructor.
     # @param bind_address (str) bind address of the node.
     # @param bind_port (int) bind port of the node.
     # @param app_context (dict) application context.
-    # @listener_type (optional, @ref common.pollables.tcp_socket) not used.
+    # @param listener_type (optional,
+    # @ref onion_routing.common.pollables.tcp_socket) not used.
     #
     # Adds itself to the registry menually (the only node to do so).
     #
@@ -36,7 +39,7 @@ class ClientNode(listener_socket.Listener):
         app_context,
         listener_type=None,
     ):
-        super(ClientNode, self).__init__(
+        super(EntryNode, self).__init__(
             bind_address,
             bind_port,
             app_context,
@@ -67,11 +70,11 @@ class ClientNode(listener_socket.Listener):
     # - Accept new connection.
     # - Create new @ref common.pollables.proxy_socket from the accepted socket
     # as browser socket.
-    # - Create new @ref node_client.pollables.socks5_client for establishing
+    # - Create new @ref entry.pollables.socks5_client for establishing
     # socks5 with other nodes as socks5_c.
     # - Get Nodes from registry and choose a random path for anonymization.
     # - Set browser_socket partner to socks5_c.
-    # - Add socks5_c to @ref common.async.async_server._socket_data.
+    # - Add socks5_c to @ref common.async.async_server.AsyncServer._socket_data.
     #
     def on_read(self):
         self.http_client.get_nodes()
@@ -153,7 +156,8 @@ class ClientNode(listener_socket.Listener):
         return path
 
     ## Close Node.
-    # Closing @ref _socket.
+    # Closing @ref onion_routing.
+    # common.pollables.listener_socket.Listener._socket.
     # Entering unregister state in @ref http_client.
     #
     def close(self):
@@ -167,7 +171,7 @@ class ClientNode(listener_socket.Listener):
 
     ## String representation.
     def __repr__(self):
-        return "ClientNode object. address %s, port %s. fd: %s" % (
+        return "EntryNode object. address %s, port %s. fd: %s" % (
             self.bind_address,
             self.bind_port,
             self.fileno(),

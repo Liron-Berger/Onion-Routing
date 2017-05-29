@@ -1,6 +1,8 @@
 #!/usr/bin/python
-## @package onion_routing.node_server.pollables.socks5_server
+## @package onion_routing.onion.pollables.socks5_server
 # Basic implementation of a server based on protocol socks5.
+## @file socks5_server.py
+# Implementation of @ref onion_routing.onion.pollables.socks5_server
 #
 
 import logging
@@ -29,9 +31,11 @@ class Socks5Server(tcp_socket.TCPSocket):
     # @param socket (socket) the wrapped socket.
     # @param state (int) state of Socks5Server.
     # @param app_context (dict) application context.
-    # @param key (int) secret key of creating @ref node_server.pollables.node.
+    # @param key (int) secret key of creating
+    # @ref onion.pollables.onion_node.OnionNode._key.
     #
-    # Creates a wrapper for the given @ref _socket to be able to
+    # Creates a wrapper for the given @ref 
+    # common.pollables.tcp_socket.TCPSocket._socket to be able to
     # read and write from it asynchronously using the right procedure for
     # socks5 protocol.
     #
@@ -200,11 +204,11 @@ class Socks5Server(tcp_socket.TCPSocket):
     # @param address (str) connect address.
     # @param port (int) connect port.
     #
-    # - Create a new partner socket - @ref common.pollables.ProxySocket.
+    # - Create a new partner socket - @ref common.pollables.proxy_socket.ProxySocket.
     # - Connect the partner to address:port which were recieved from
     # the client.
-    # - set @ref _partner = partner.
-    # - set @ref partner of partner to this.
+    # - set @ref common.pollables.tcp_socket.TCPSocket._partner = partner.
+    # - set partner of partner to this.
     #
     # In case of exception: close the opened socket if already created and
     # return error response.
@@ -312,7 +316,7 @@ class Socks5Server(tcp_socket.TCPSocket):
             ]["next"]
 
     ## Get events for poller.
-    # @retuns (int) events to register for poller.
+    # @returns (int) events to register for poller.
     #
     # On appropriate state:
     # - POLLIN when @ref _state is ACTIVE and @ref _buffer is not full.

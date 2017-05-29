@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.async.async_server
 # Server for handling asynchronous I/O.
+## @file async_server.py 
+# Implementation of @ref onion_routing.common.async.async_server
 #
 
 import errno
@@ -101,7 +103,7 @@ class AsyncServer(object):
         self._socket_data[listener.fileno()] = listener
         return listener
 
-    ## Add @ref pollable to socket data.
+    ## Add @ref onion_routing.common.pollables.pollable to socket data.
     def add_socket(
         self,
         async_socket,
@@ -137,7 +139,12 @@ class AsyncServer(object):
                         except util.DisconnectError:
                             entry.on_close()
                         except Exception as e:
-                            logging.error(traceback.format_exc())
+                            error = traceback.format_exc()
+                            try:
+                                if not e.errno in (errno.ECONNRESET, errno.ECONNABORTED):
+                                    logging.error(error)
+                            except Exception:
+                                logging.error(error)
                             entry.on_close()
                 except select.error as e:
                     if e[0] != errno.EINTR:

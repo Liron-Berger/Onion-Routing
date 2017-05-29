@@ -1,8 +1,10 @@
 #!/usr/bin/python
-## @package onion_routing.node_client.pollables.socks5_client
+## @package onion_routing.entry.pollables.socks5_client
 # Socks5 client socket, responsible for establishing connections to all other
 # nodes, and later serves as proxy for encrypting all communication with
 # the browser.
+## @file socks5_client.py
+# Implementation of @ref onion_routing.entry.pollables.socks5_client
 #
 
 from common import constants
@@ -34,11 +36,13 @@ class Socks5Client(tcp_socket.TCPSocket):
     # @param state (int) state of Socks5Server.
     # @param app_context (dict) application context.
     # @param browser_socket (socket) @ref common.pollables.tcp_socket object
-    #   for redirecting from the client to @ref_partner after socks5
+    #   for redirecting from the client to @ref 
+    #   common.pollables.tcp_socket.TCPSocket._partner after socks5
     #   is established.
     # @param path (dict) the nodes and their order.
     #
-    # Creates a wrapper for the given @ref _socket to be able to
+    # Creates a wrapper for the given
+    # @ref common.pollables.tcp_socket.TCPSocket._socket to be able to
     # read and write from it asynchronously using the right procedure for
     # socks5 protocol as a client, sending socks5 request to a
     # veriety of servers.
@@ -176,7 +180,8 @@ class Socks5Client(tcp_socket.TCPSocket):
     # Decodes the buffer to for content of response.
     # When response is positive update @ref _connected_nodes to the next node.
     # Before establishing connection with the last node:
-    # - make @ref _partner to @ref _browser_socket in order to
+    # - make @ref common.pollables.tcp_socket.TCPSocket._partner
+    # to @ref _browser_socket in order to
     # create a proxy between the last node and browser.
     # Next state:
     # - SEND_GREETING: establishing new connection with regular nodes.
@@ -221,7 +226,7 @@ class Socks5Client(tcp_socket.TCPSocket):
         return True
 
     ## Start byte counter.
-    # Fill @ref _app_context ["connections"] with new connection to
+    # Fill connection dict with new connection to
     # save bytes recieved and sent for statistics.
     #
     def _start_byte_counter(self):
@@ -253,7 +258,9 @@ class Socks5Client(tcp_socket.TCPSocket):
         ]["connections"][self][type]["bytes"] += bytes
 
     ## On read event.
-    # Read from @ref _partner until maximum size of @ref _buffer is recived.
+    # Read from @ref common.pollables.tcp_socket.TCPSocket._partner
+    # until maximum size of @ref common.pollables.tcp_socket.TCPSocket._buffer
+    # is recived.
     # Decrypt content with secret key of current node.
     #
     # Update statistics.
@@ -320,8 +327,11 @@ class Socks5Client(tcp_socket.TCPSocket):
                 ]["next"]
 
     ## On close event.
-    # Change @ref _state of socket to CLOSING and empty @ref _buffer.
-    # If serves as proxy run on_close on @ref _partner.
+    # Change @ref common.pollables.tcp_socket.TCPSocket._state
+    # of socket to CLOSING and empty @ref
+    # common.pollables.tcp_socket.TCPSocket._buffer.
+    # If serves as proxy run on_close on @ref
+    # common.pollables.tcp_socket.TCPSocket._partner.
     # If browser was not closed, change it state to CLOSING
     #
     def on_close(self):
@@ -331,7 +341,7 @@ class Socks5Client(tcp_socket.TCPSocket):
             self._browser_socket.state = constants.CLOSING
 
     ## Close Socks5Client.
-    # Closing @ref _socket.
+    # Closing @ref common.pollables.tcp_socket.TCPSocket._socket.
     # Remove this connection from statistics.
     # If browser was not closed, close it.
     #
@@ -343,11 +353,14 @@ class Socks5Client(tcp_socket.TCPSocket):
             self._browser_socket.close()
 
     ## Get events for poller.
-    # @retuns (int) events to register for poller.
+    # @returns (int) events to register for poller.
     #
     # On appropriate state:
-    # - POLLIN when @ref _state is ACTIVE and @ref _buffer is not full.
-    # - POLLOUT when @ref _buffer is not empty.
+    # - POLLIN when @ref common.pollables.tcp_socket.TCPSocket._state
+    # is ACTIVE and @ref common.pollables.tcp_socket.TCPSocket._buffer
+    # is not full.
+    # - POLLOUT when @ref common.pollables.tcp_socket.TCPSocket._buffer
+    # is not empty.
     #
     def get_events(self):
         event = event_object.BaseEvent.POLLERR

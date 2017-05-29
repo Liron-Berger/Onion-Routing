@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.pollables.listener_socket
 # Base class for all listener sockets used for the poller.
+## @file listener_socket.py
+# Implementation of @ref onion_routing.common.pollables.listener_socket
 #
 
 import logging
@@ -97,7 +99,7 @@ class Listener(pollable.Pollable):
         self._socket.close()
 
     ## Get events for poller.
-    # @retuns (int) events to register for poller.
+    # @returns (int) events to register for poller.
     #
     # POLLIN when @ref _state is LISTEN.
     #

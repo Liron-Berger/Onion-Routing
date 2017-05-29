@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.utilities.util
 # General utilities for the project.
+## @file util.py
+# Implementation of @ref onion_routing.common.utilities.util
 #
 
 import errno

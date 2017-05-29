@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.async.event_object
 # Event objects for asynchronous I/O.
+## @file event_object.py 
+# Implementation of @ref onion_routing.common.async.event_object
 #
 
 import os

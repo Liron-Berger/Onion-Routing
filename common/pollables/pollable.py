@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.pollables.pollable
 # Base class for all objects used for the poller.
+## @file pollable.py
+# Implementation of @ref onion_routing.common.pollables.pollable
 #
 
 

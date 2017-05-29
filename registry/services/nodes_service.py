@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.registry.services.nodes_service
 # Service for registering new nodes.
+## @file nodes_service.py
+# Implementation of @ref onion_routing.registry.services.nodes_service
 #
 
 from common.utilities import http_util

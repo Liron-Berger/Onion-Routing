@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.registry.services.register_service
 # Service for registering new nodes.
+## @file register_service.py
+# Implementation of @ref onion_routing.registry.services.register_service
 #
 
 import logging

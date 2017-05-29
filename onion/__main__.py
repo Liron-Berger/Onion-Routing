@@ -1,6 +1,5 @@
 #!/usr/bin/python
-## @package onion_routing.node_server.__main__
-# The main module for the node server.
+## @package onion_routing.onion.__main__
 #
 
 import argparse
@@ -12,7 +11,7 @@ from common import constants
 from common.async import async_server
 from common.async import event_object
 from common.utilities import util
-from node_server.pollables import server_node
+from onion.pollables import onion_node
 
 
 ## Dictionary off all possible events for poller.
@@ -127,7 +126,7 @@ def __main__():
     )
 
     node = server.add_listener(
-        server_node.ServerNode,
+        onion_node.OnionNode,
         args.bind_address,
         args.bind_port,
     )

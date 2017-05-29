@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.pollables.http_client
 # Socket class for sending requests to http_server.
+## @file http_client.py
+# Implementation of @ref onion_routing.common.pollables.http_client
 #
 
 import ast
@@ -246,7 +248,7 @@ class HttpClient(tcp_socket.TCPSocket):
             ]["next"]
 
     ## Get events for poller.
-    # @retuns (int) events to register for poller.
+    # @returns (int) events to register for poller.
     #
     # - POLLIN when @ref _machine_state is RECV_REGISTER.
     # - POLLOUT when @ref _machine_state is SEND_REGISTER or SEND_UNREGISTER.

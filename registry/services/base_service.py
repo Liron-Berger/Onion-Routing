@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.registry.services.base_service
 # Base class for all services.
+## @file base_service.py
+# Implementation of @ref onion_routing.registry.services.base_service
 #
 
 from common import constants

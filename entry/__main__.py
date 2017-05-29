@@ -1,6 +1,6 @@
 #!/usr/bin/python
-## @package onion_routing.node_client.__main__
-# Socks5 client node to use as first node in the chain.
+## @package onion_routing.entry.__main__
+# Socks5 entry node to use as first node in the chain.
 #
 
 import argparse
@@ -13,7 +13,7 @@ from common.async import async_server
 from common.async import event_object
 from common.utilities import util
 from common.utilities import xml_util
-from node_client.pollables import client_node
+from entry.pollables import entry_node
 
 
 ## Poll events dict.
@@ -88,7 +88,7 @@ def __main__():
     )
 
     config = ConfigParser.ConfigParser()
-    config.read(constants.REGISTRY_NODE_CONFIG)
+    config.read(constants.ENTRY_NODE_CONFIG)
 
     logging.info("Welcome to the Onion Routing project.\n")
 
@@ -132,9 +132,9 @@ def __main__():
     )
 
     node = server.add_listener(
-        client_node.ClientNode,
-        config.get("ClientNode", "bind.address"),
-        config.getint("ClientNode", "bind.port"),
+        entry_node.EntryNode,
+        config.get("EntryNode", "bind.address"),
+        config.getint("EntryNode", "bind.port"),
     )
     server.add_socket(node.http_client)
 

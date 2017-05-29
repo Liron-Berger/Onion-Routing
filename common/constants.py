@@ -1,6 +1,7 @@
 #!/usr/bin/python
 ## @package onion_routing.common.constants
 # Constants used within the program.
+## @file constants.py Implementation of @ref onion_routing.common.constants
 #
 
 
@@ -23,9 +24,9 @@ DEFAULT_BUFFER_SIZE = 1024
 ## Path of registry config file.
 REGISTRY_NODE_CONFIG = "registry/config.ini"
 ## Path of node server config file.
-NODE_SERVER_CONFIG = "node_server/config.ini"
+ONION_NODE_CONFIG = "onion/config.ini"
 ## Path of node client config file.
-NODE_SERVER_CONFIG = "node_client/config.ini"
+ENTRY_NODE_CONFIG = "entry/config.ini"
 
 ## The number of nodes in path to anonymize message.
 OPTIMAL_NODES_IN_PATH = 3
@@ -46,8 +47,8 @@ ASYNC_SERVER_STATES = (
 ) = range(3)
 
 
-## Socks5 socket states for @ref node_client.pollables.socks5_client and
-##      @ref node_server.pollables.socks5_server.
+## Socks5 socket states for @ref entry.pollables.socks5_client and
+##      @ref onion.pollables.socks5_server.
 # - RECV_GREETING: Recieve socks5 greeting from client.
 # - SEND_GREETING: Send response for socks5 greeting to client.
 # - RECV_CONNECTION_REQUEST: Recieve socks5 connection request from client.
@@ -92,8 +93,8 @@ HTTP_STATES = (
 
 
 ## http client states for registering new
-##     @ref node_server.pollables.socks5_server
-##     for @ref node_server.pollables.http_client.
+##     @ref onion.pollables.socks5_server
+##     for @ref common.pollables.http_client.
 # - SEND_REGISTER: Sending registring request.
 # - RECV_REGISTER: Recieving response for register request.
 # - SEND_UNREGISTER: Sending unregistering request.
@@ -133,7 +134,7 @@ SUPPORTED_METHODS = (
 )
 ## Private method for socks5 protocol.
 # Special self recognition method for deciding whether to decrypt recieved data
-# in @ref node_server.pollables.socks5_server.
+# in @ref onion.pollables.socks5_server.
 # Data should not be decrypted if node acts as proxy, unless its the last node.
 # In case of the last node the missing signature is recognized and thus the
 # server knows it should decrypt the encrypted messages.

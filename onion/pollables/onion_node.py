@@ -1,6 +1,8 @@
 #!/usr/bin/python
-## @package onion_routing.node_server.pollables.server_node
+## @package onion_routing.onion.pollables.onion_node
 # Regular nodes used for anonymizing communications.
+## @file onion_node.py
+# Implementation of @ref onion_routing.onion.pollables.onion_node
 #
 
 import logging
@@ -11,7 +13,7 @@ import traceback
 from common import constants
 from common.pollables import listener_socket
 from common.pollables import http_client
-from node_server.pollables import socks5_server
+from onion.pollables import socks5_server
 
 
 ## Server Node.
@@ -19,13 +21,13 @@ from node_server.pollables import socks5_server
 # is recieved.
 # Each node has a secret key used for encypting all communication.
 #
-class ServerNode(listener_socket.Listener):
+class OnionNode(listener_socket.Listener):
 
     ## Constructor.
     # @param bind_address (str) bind address of the node.
     # @param bind_port (int) bind port of the node.
     # @param app_context (dict) application context.
-    # @listener_type (optional, @ref common.pollables.tcp_socket) not used.
+    # @param listener_type (optional, @ref common.pollables.tcp_socket) not used.
     #
     def __init__(
         self,
@@ -34,7 +36,7 @@ class ServerNode(listener_socket.Listener):
         app_context,
         listener_type=socks5_server.Socks5Server,
     ):
-        super(ServerNode, self).__init__(
+        super(OnionNode, self).__init__(
             bind_address,
             bind_port,
             app_context,
@@ -62,7 +64,7 @@ class ServerNode(listener_socket.Listener):
 
     ## On read event.
     # Accept new connection.
-    # Create a new @ref node_server.pollables.socks5_server with
+    # Create a new @ref onion.pollables.socks5_server with
     # the secret key of this node.
     # Add socket to socket_data of @ref common.async.async_server.
     #
@@ -89,7 +91,7 @@ class ServerNode(listener_socket.Listener):
                 server.close()
 
     ## Close Node.
-    # Closing @ref _socket.
+    # Closing @ref common.pollables.listener_socket.Listener._socket.
     # Entering unregister state in @ref http_client.
     #
     def close(self):
@@ -103,7 +105,7 @@ class ServerNode(listener_socket.Listener):
 
     ## String representation.
     def __repr__(self):
-        return "ServerNode object. address %s, port %s. fd: %s" % (
+        return "OnionNode object. address %s, port %s. fd: %s" % (
             self.bind_address,
             self.bind_port,
             self.fileno(),

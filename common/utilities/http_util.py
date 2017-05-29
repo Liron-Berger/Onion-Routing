@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.utilities.http_util
 # utilities for HTTP/1.1.
+## @file http_util.py
+# Implementation of @ref onion_routing.common.utilities.http_util
 #
 
 import urlparse
@@ -31,7 +33,7 @@ class HTTPError(RuntimeError):
 ## Get first line of HTTP request.
 # @param buffer (str) request buffer.
 # @param request_context (dict) request context
-# of @ref http_client.pollables.http_socket.
+# of @ref onion_routing.registry.pollables.http_socket.
 #
 # @returns (bool) whether first line is HTTP protocol
 # request with supported methods.

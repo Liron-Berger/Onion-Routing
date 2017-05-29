@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.utilities.encryption_util
 # utilities for handling encryption.
+## @file encryption_util.py
+# Implementation of @ref onion_routing.common.utilities.encryption_util
 #
 
 

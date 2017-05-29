@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.common.pollables.tcp_socket
 # Base class for all sockets used for sending and reciving data.
+## @file tcp_socket.py
+# Implementation of @ref onion_routing.common.pollables.tcp_socket
 #
 
 from common import constants
@@ -100,7 +102,7 @@ class TCPSocket(pollable.Pollable):
         self._socket.close()
 
     ## Get events for poller.
-    # @retuns (int) events to register for poller.
+    # @returns (int) events to register for poller.
     #
     # - POLLIN when @ref _state is ACTIVE and @ref _buffer is not full.
     # - POLLOUT when @ref _buffer is not empty.

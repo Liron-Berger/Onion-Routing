@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.registry.services.file_service
 # Service for openening a requested file.
+## @file file_service.py
+# Implementation of @ref onion_routing.registry.services.file_service
 #
 
 import os
