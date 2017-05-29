@@ -28,7 +28,7 @@ In order to run the project there are some requirments:
 1) Download and install Python 2.7 (https://www.python.org/download/releases/2.7/)
 2) Download this repository and extract the zip.
 3) Download and install the latest version of Firefox (https://www.mozilla.org/en-US/firefox/)
-4) Change Firefox settings to connect via Socks5 to your local ip and port 1080.
+4) Change Firefox settings to connect with socks5 proxy to your local ip and port 1080.
 5) Change the address in all configuration files to your ip.
 ```
 
@@ -43,23 +43,28 @@ Running Registry:
 ```
 python -m registry [args]
 ```
-Running Regular Node:
-```
-python -m node_server [args]
-```
+
 Running The first node:
 ```
-python -m node_client [args]
+python -m entry_node [args]
 ```
+
+Running Regular Node:
+```
+python -m onion_node [args]
+```
+
+Note: You must have the registry already running in order to run smoothly entry_node and onion_node.
+
 
 ### Arguments
 
-The node_server requires bind port, so excecution will be:
+onion_node requires bind port, so excecution will be:
 ```
-python -m node_server --bind-port 2080
+python -m onion_node --bind-port [port] [additional args]
 ```
-Note: Other arguments for both node_server and registry_node are optional, see --help or -h for help.
 
+All other arguments are optional. to see all arguments enter -h/--help.
 
 ### Graphical Interface
 
@@ -67,11 +72,11 @@ There is no graphical interface as part of the main program.
 In order too enter the GUI in your prefered browser (not Firefox as Firefox should be working with socks5)
 type:
 ```
-(your_ip):8080/statistics
+(your_ip):8080/
 ```
-This will open the main page where statistics about the program may be seen.
+This will open the home page from which other options are available.
 
-Note: Unless registry is running GUI won't work as it uses the HTTP server.
+Note: You must run the registry in order to use the GUI.
 
 
 ## Authors
