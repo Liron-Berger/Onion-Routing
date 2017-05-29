@@ -96,7 +96,7 @@ def __main__():
     )
 
     config = ConfigParser.ConfigParser()
-    config.read(constants.REGISTRY_NODE_CONFIG)
+    config.read(constants.ONION_NODE_CONFIG)
 
     logging.info("Welcome to the Onion Routing project.\n")
 
@@ -117,8 +117,8 @@ def __main__():
         "max_buffer_size": args.max_buffer_size,
         "base": args.base,
 
-        "http_address": config.get("HttpSocket", "bind.address"),
-        "http_port": config.getint("HttpSocket", "bind.port"),
+        "http_address": config.get("Registry", "bind.address"),
+        "http_port": config.getint("Registry", "bind.port"),
     }
 
     server = async_server.AsyncServer(

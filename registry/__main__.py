@@ -83,6 +83,10 @@ def parse_args():
 ## Main implementation.
 def __main__():
     args = parse_args()
+
+    if args.daemon:
+        util.daemonize()
+
     logging.basicConfig(
         filename=args.log_file,
         level=getattr(logging, args.log_level),
@@ -92,9 +96,6 @@ def __main__():
     config.read(constants.REGISTRY_NODE_CONFIG)
 
     logging.info("Welcome to the Onion Routing project.\n")
-
-    if args.daemon:
-        util.daemonize()
 
     application_context = {
         "log_file": args.log_file,
@@ -109,7 +110,7 @@ def __main__():
     }
 
     xml = xml_util.XmlHandler(
-        config.get("nodesFile", "path"),
+        config.get("NodesFile", "path"),
         application_context["nodes"],
         type=constants.XML_NODES,
     )

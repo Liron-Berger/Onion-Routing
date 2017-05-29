@@ -127,8 +127,7 @@ def connect(
 # 1. Forking process and closing parent.
 # 2. In child closing all inherited opened file descriptors with resource lib.
 # 3. Redirect standard input, standard output and standard error to /dev/null.
-# 4. Change working directory to /.
-# 5. Fork and exit parent to move child as child of init.
+# 4. Fork and exit parent to move child as child of init.
 #
 def daemonize():
     if os.name == "nt":
@@ -153,7 +152,6 @@ def daemonize():
     for i in range(3):
         os.dup2(i, fd)
     os.close(fd)
-    os.chdir('/')
     child = os.fork()
     if child != 0:
         os._exit(0)

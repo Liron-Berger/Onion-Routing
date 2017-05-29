@@ -105,8 +105,8 @@ def __main__():
 
         "registry": {},
         "connections": {},
-        "http_address": config.get("HttpSocket", "bind.address"),
-        "http_port": config.getint("HttpSocket", "bind.port"),
+        "http_address": config.get("Registry", "bind.address"),
+        "http_port": config.getint("Registry", "bind.port"),
     }
 
     xml = xml_util.XmlHandler(

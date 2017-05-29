@@ -30,7 +30,7 @@ class EntryNode(listener_socket.Listener):
     # @param listener_type (optional,
     # @ref onion_routing.common.pollables.tcp_socket) not used.
     #
-    # Adds itself to the registry menually (the only node to do so).
+    # Gets Nodes from the Regsitry.
     #
     def __init__(
         self,
@@ -64,6 +64,7 @@ class EntryNode(listener_socket.Listener):
             connect_port=app_context["http_port"],
             node=self,
         )
+        self.http_client.get_nodes()
 
     ## On read event.
     # - Gets connected nodes from registry.
@@ -162,7 +163,7 @@ class EntryNode(listener_socket.Listener):
     #
     def close(self):
         self._socket.close()
-        self.http_client.unregister()
+        self.http_client._machine_state = constants.UNREGISTERED
 
     ## Retrive @ref _key.
     @property

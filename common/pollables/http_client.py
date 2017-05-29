@@ -61,7 +61,7 @@ class HttpClient(tcp_socket.TCPSocket):
         app_context,
         connect_address,
         connect_port,
-        node,
+        node=None,
     ):
         super(HttpClient, self).__init__(
             socket,
@@ -82,7 +82,7 @@ class HttpClient(tcp_socket.TCPSocket):
         self._machine_state = constants.SEND_REGISTER
 
         ## node instance that is registering.
-        self._node = node
+        self._node = node            
 
     ## Create the state machine for socket.
     # @returns (dict) states to the thier methods.
