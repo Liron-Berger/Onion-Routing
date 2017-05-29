@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.entry.__main__
 # Socks5 entry node to use as first node in the chain.
+## @file entry/__main__.py
+# Implementation of @ref onion_routing.entry.__main__
 #
 
 import argparse

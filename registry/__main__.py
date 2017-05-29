@@ -1,6 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.registry.__main__
 # Regisry node. using http server as registry.
+## @file registry/__main__.py
+# Implementation of @ref onion_routing.registry.__main__
 #
 
 import argparse

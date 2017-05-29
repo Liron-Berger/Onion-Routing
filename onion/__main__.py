@@ -1,5 +1,8 @@
 #!/usr/bin/python
 ## @package onion_routing.onion.__main__
+# Socks5 node to use in Onion Routing.
+## @file onion/__main__.py
+# Implementation of @ref onion_routing.onion.__main__
 #
 
 import argparse
