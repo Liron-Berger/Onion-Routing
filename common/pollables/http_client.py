@@ -6,6 +6,7 @@
 #
 
 import ast
+import errno
 import logging
 
 from common import constants
@@ -220,32 +221,50 @@ class HttpClient(tcp_socket.TCPSocket):
 
     ## Change @ref _machine_state to SEND_UNREGISTER.
     def unregister(self):
-        self._machine_state = constants.SEND_UNREGISTER
+        self._machine_state = constants.SEND_UNREGISTER        
 
     ## On read event.
     # Read from @ref _socket and enter the state function afterwards.
     # Change to the next state once operation is done.
+    # If registry disconnected, closes both @ref _node and HttpClient.
     #
     def on_read(self):
-        self._buffer += util.recieve_buffer(
-            self._socket,
-            self._request_context[
-                "app_context"
-            ]["max_buffer_size"] - len(self._buffer),
-        )
-        if self._state_machine[self._machine_state]["method"]():
-            self._machine_state = self._state_machine[
-                self._machine_state
-            ]["next"]
+        try:
+            self._buffer += util.recieve_buffer(
+                self._socket,
+                self._request_context[
+                    "app_context"
+                ]["max_buffer_size"] - len(self._buffer),
+            )
+            if self._state_machine[self._machine_state]["method"]():
+                self._machine_state = self._state_machine[
+                    self._machine_state
+                ]["next"]
+        except Exception as e:
+            if e.errno not in (errno.ECONNRESET, errno.ECONNABORTED):
+                raise
+            logging.error("Registry disconnected")
+            self._machine_state = constants.UNREGISTERED
+            self._node.on_close()
+            self.on_close()
 
     ## On write event.
     # Enter the state function and change to the next state once done.
+    # If registry disconnected, closes both @ref _node and HttpClient.
     #
     def on_write(self):
-        if self._state_machine[self._machine_state]["method"]():
-            self._machine_state = self._state_machine[
-                self._machine_state
-            ]["next"]
+        try:
+            if self._state_machine[self._machine_state]["method"]():
+                self._machine_state = self._state_machine[
+                    self._machine_state
+                ]["next"]
+        except Exception as e:
+            if e.errno != errno.ENOTCONN:
+                raise
+            logging.error("Registry disconnected")
+            self._machine_state = constants.UNREGISTERED
+            self._node.on_close()
+            self.on_close()
 
     ## Get events for poller.
     # @returns (int) events to register for poller.
