@@ -62,9 +62,9 @@ class RegisterService(base_service.BaseService):
                     port,
                 )
             )
-            raise RuntimeError("Node with the same port already registered.")
-        self._request_context["app_context"]["registry"][port] = {
-            "name": port,
+            raise RuntimeError("Node with the same address already registered.")
+        self._request_context["app_context"]["registry"][address] = {
+            "name": address,
             "address": address,
             "port": int(port),
             "key": key,
@@ -75,5 +75,5 @@ class RegisterService(base_service.BaseService):
                 port,
             )
         )
-        self._request_context["app_context"]["nodes"][port] = address
+        self._request_context["app_context"]["nodes"][address] = port
         self._request_context["app_context"]["xml"].update()
