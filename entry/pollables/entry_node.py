@@ -154,6 +154,9 @@ class EntryNode(listener_socket.Listener):
         path = {}
         for i in range(len(chosen_nodes)):
             path[str(i + 1)] = chosen_nodes[i]
+            
+        for x in path.values():
+            x["address"] = socket.gethostbyname(x["address"])
         return path
 
     ## Close Node.

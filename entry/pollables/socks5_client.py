@@ -7,6 +7,8 @@
 # Implementation of @ref onion_routing.entry.pollables.socks5_client
 #
 
+import socket
+
 from common import constants
 from common.async import event_object
 from common.pollables import tcp_socket
@@ -165,7 +167,7 @@ class Socks5Client(tcp_socket.TCPSocket):
                     "command": constants.CONNECT,
                     "reserved": constants.SOCKS5_RESERVED,
                     "address_type": constants.IP_4,
-                    "address": address,
+                    "address": socket.gethostbyname(address),
                     "port": port,
                 },
             )
